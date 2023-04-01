@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net7.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Silk.NET.Input.Glfw" Version="2.17.0-build3268.0" />
+      <PackageReference Include="Silk.NET.Input.Sdl" Version="2.17.0-build3268.0" />
+      <PackageReference Include="Silk.NET.WebGPU" Version="2.17.0-build3268.0" />
+      <PackageReference Include="Silk.NET.WebGPU.Extensions.Disposal" Version="2.17.0-build3268.0" />
+      <PackageReference Include="Silk.NET.WebGPU.Native.WGPU" Version="2.17.0-build3268.0" />
+      <PackageReference Include="Silk.NET.Windowing.Glfw" Version="2.17.0-build3268.0" />
+      <PackageReference Include="Silk.NET.Windowing.Sdl" Version="2.17.0-build3268.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Remove="Shader.wgsl" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <EmbeddedResource Include="Shaders\Ui.wgsl" />
+    </ItemGroup>
+
+</Project>
