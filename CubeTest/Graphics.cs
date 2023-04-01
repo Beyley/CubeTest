@@ -438,15 +438,6 @@ public static unsafe class Graphics {
 
 		//Write the projection matrix into the buffer
 		WebGPU.QueueWriteBuffer(Queue, UiProjectionMatrixBuffer, 0, &projectionMatrix, (nuint)sizeof(Matrix4x4));
-
-		//Get a command encoder
-		CommandEncoder* commandEncoder = WebGPU.DeviceCreateCommandEncoder(Device, new CommandEncoderDescriptor());
-
-		//Finish the command encoder to get a command buffer
-		CommandBuffer* commandBuffer = WebGPU.CommandEncoderFinish(commandEncoder, new CommandBufferDescriptor());
-
-		//Submit the queue to the GPU
-		WebGPU.QueueSubmit(Queue, 1, &commandBuffer);
 	}
 
 	private static void CreateUiProjectionMatrixBuffer() {
