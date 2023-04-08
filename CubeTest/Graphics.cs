@@ -1,6 +1,4 @@
 using System.Diagnostics.CodeAnalysis;
-using System.Numerics;
-using System.Runtime.CompilerServices;
 using Silk.NET.Core.Native;
 using Silk.NET.Input.Glfw;
 using Silk.NET.Input.Sdl;
@@ -10,7 +8,6 @@ using Silk.NET.WebGPU.Extensions.Disposal;
 using Silk.NET.Windowing;
 using Silk.NET.Windowing.Glfw;
 using Silk.NET.Windowing.Sdl;
-using Buffer = Silk.NET.WebGPU.Buffer;
 using Color = Silk.NET.WebGPU.Color;
 
 namespace CubeTest;

@@ -478,3 +478,5 @@ $RECYCLE.BIN/
 
 # Jetbrains
 .idea/
+
+!CubeTest/Models/*.obj
