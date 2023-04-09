@@ -1,7 +1,7 @@
 using Silk.NET.Maths;
 using Silk.NET.WebGPU;
 
-namespace CubeTest;
+namespace CubeTest.Abstractions;
 
 public unsafe class Texture : IDisposable {
 	public Silk.NET.WebGPU.Texture* RawTexture;

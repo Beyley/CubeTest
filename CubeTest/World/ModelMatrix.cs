@@ -1,7 +1,6 @@
 using System.Numerics;
-using Silk.NET.Maths;
 
-namespace CubeTest; 
+namespace CubeTest.World; 
 
 public struct ModelMatrix {
 	public Matrix4x4 Model;

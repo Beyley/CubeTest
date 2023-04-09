@@ -1,6 +1,6 @@
 using System.Reflection;
 
-namespace CubeTest; 
+namespace CubeTest.Helpers; 
 
 public static class ResourceHelpers {
 	/// <summary>

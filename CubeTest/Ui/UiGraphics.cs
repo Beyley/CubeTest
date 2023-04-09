@@ -1,9 +1,12 @@
 using System.Numerics;
+using CubeTest.Abstractions;
+using CubeTest.Helpers;
 using Silk.NET.Core.Native;
 using Silk.NET.WebGPU;
 using Buffer = Silk.NET.WebGPU.Buffer;
+using Texture = CubeTest.Abstractions.Texture;
 
-namespace CubeTest;
+namespace CubeTest.Ui;
 
 public static unsafe class UiGraphics {
 	private static ShaderModule* _Shader;

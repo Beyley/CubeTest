@@ -1,3 +1,5 @@
+using CubeTest.World;
+
 namespace CubeTest.ModelLoader; 
 
 public class Model {

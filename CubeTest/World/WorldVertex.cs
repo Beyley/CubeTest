@@ -1,6 +1,6 @@
 using System.Numerics;
 
-namespace CubeTest; 
+namespace CubeTest.World; 
 
 public struct WorldVertex {
 	public Vector3 Position;

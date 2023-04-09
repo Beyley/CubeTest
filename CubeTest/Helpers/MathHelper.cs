@@ -1,6 +1,6 @@
 using System.Runtime.CompilerServices;
 
-namespace CubeTest; 
+namespace CubeTest.Helpers; 
 
 public class MathHelper {
 	[MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]

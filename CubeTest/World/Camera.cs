@@ -1,6 +1,6 @@
 using System.Numerics;
 
-namespace CubeTest; 
+namespace CubeTest.World; 
 
 public struct Camera {
 	public Vector3 Position = new Vector3(0, 0, 0);

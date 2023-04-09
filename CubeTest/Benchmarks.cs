@@ -1,5 +1,6 @@
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Jobs;
+using CubeTest.Helpers;
 using CubeTest.ModelLoader;
 using CubeTest.ModelLoader.WavefrontObj;
 

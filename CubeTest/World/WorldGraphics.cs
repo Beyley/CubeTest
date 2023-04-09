@@ -1,13 +1,15 @@
 using System.Diagnostics;
 using System.Numerics;
+using CubeTest.Abstractions;
+using CubeTest.Helpers;
 using CubeTest.ModelLoader;
 using CubeTest.ModelLoader.WavefrontObj;
 using Silk.NET.Core.Native;
-using Silk.NET.Maths;
 using Silk.NET.WebGPU;
 using Buffer = Silk.NET.WebGPU.Buffer;
+using Texture = CubeTest.Abstractions.Texture;
 
-namespace CubeTest;
+namespace CubeTest.World;
 
 public static unsafe class WorldGraphics {
 	private static ShaderModule*    _Shader = null!;
