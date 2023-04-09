@@ -31,6 +31,18 @@
       <EmbeddedResource Include="Shaders\World.wgsl" />
       <None Remove="Models\cube.obj" />
       <EmbeddedResource Include="Models\cube.obj" />
+      <None Remove="Models\monkey.obj" />
+      <EmbeddedResource Include="Models\monkey.obj" />
+      <None Remove="Models\windows.obj" />
+      <EmbeddedResource Include="Models\windows.obj" />
+      <None Remove="Models\SM_Deccer_Cubes_Textured.obj" />
+      <EmbeddedResource Include="Models\SM_Deccer_Cubes_Textured.obj" />
+      <None Remove="Models\SM_Deccer_Cubes_Merged_Texture_Atlas.obj" />
+      <EmbeddedResource Include="Models\SM_Deccer_Cubes_Merged_Texture_Atlas.obj" />
+      <None Remove="Textures\T_Atlas.png" />
+      <EmbeddedResource Include="Textures\T_Atlas.png" />
+      <None Remove="Models\sponza.obj" />
+      <EmbeddedResource Include="Models\sponza.obj" />
     </ItemGroup>
 
 </Project>

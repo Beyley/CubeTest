@@ -1,5 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Numerics;
 using Silk.NET.Core.Native;
+using Silk.NET.Input;
 using Silk.NET.Input.Glfw;
 using Silk.NET.Input.Sdl;
 using Silk.NET.Maths;
@@ -14,6 +16,7 @@ namespace CubeTest;
 
 public static unsafe class Graphics {
 	public static IWindow Window = null!;
+	private static IInputContext Input = null!;
 
 	// ReSharper disable once InconsistentNaming
 	public static WebGPU WebGPU = null!;
@@ -25,9 +28,10 @@ public static unsafe class Graphics {
 	public static Device*   Device;
 	public static Queue*    Queue;
 
-	public static Surface*      Surface;
-	public static TextureFormat SwapchainFormat;
-	public static SwapChain*    Swapchain;
+	public static  Surface*      Surface;
+	public static  TextureFormat SwapchainFormat;
+	public static  SwapChain*    Swapchain;
+	private static DepthTexture  _DepthTexture;
 
 	public static void Initialize() {
 		//Register GLFW and SDL windowing/input, for AOT scenarios (like WASM or NativeAOT)
@@ -42,13 +46,48 @@ public static unsafe class Graphics {
 		Window = Silk.NET.Windowing.Window.Create(WindowOptions.Default with {
 			API = GraphicsAPI.None,
 			ShouldSwapAutomatically = false,
-			IsContextControlDisabled = true
+			IsContextControlDisabled = true, Position = new Vector2D<int>(2000, 0)
 		});
 
 		Window.Load              += Load;
 		Window.Render            += Render;
 		Window.FramebufferResize += FramebufferResize;
 		Window.Closing           += WindowClosing;
+
+		Vector2 last = Vector2.Zero;
+		Window.Update += d => {
+			foreach (IMouse mouse in Input.Mice) {
+				mouse.Cursor.CursorMode = CursorMode.Raw;
+				
+				WorldGraphics.Camera.Pitch -= (mouse.Position.Y - last.Y) * 0.1f;
+				WorldGraphics.Camera.Yaw += (mouse.Position.X- last.X) * 0.1f;
+				
+				last = mouse.Position;
+			}
+
+			foreach (IKeyboard kb in Input.Keyboards) {
+				if (kb.IsKeyPressed(Key.A)) {
+					WorldGraphics.Camera.Position -= Vector3.Normalize(Vector3.Cross(WorldGraphics.Camera.Front, WorldGraphics.Camera.Up)) * (float)d;
+				}
+				if (kb.IsKeyPressed(Key.D)) {
+					WorldGraphics.Camera.Position += Vector3.Normalize(Vector3.Cross(WorldGraphics.Camera.Front, WorldGraphics.Camera.Up)) * (float)d;
+				}
+				
+				if (kb.IsKeyPressed(Key.ShiftLeft)) {
+					WorldGraphics.Camera.Position -= WorldGraphics.Camera.Up * (float)d;
+				}
+				if (kb.IsKeyPressed(Key.Space)) {
+					WorldGraphics.Camera.Position += WorldGraphics.Camera.Up * (float)d;
+				}
+				
+				if (kb.IsKeyPressed(Key.W)) {
+					WorldGraphics.Camera.Position += WorldGraphics.Camera.Front * (float)d;
+				}
+				if (kb.IsKeyPressed(Key.S)) {
+					WorldGraphics.Camera.Position -= WorldGraphics.Camera.Front * (float)d;
+				}
+			}
+		};
 
 		Window.Run();
 	}
@@ -58,6 +97,7 @@ public static unsafe class Graphics {
 	}
 
 	private static void WindowClosing() {
+		WorldGraphics.Dispose();
 		UiGraphics.Dispose();
 		Disposal.Dispose(Device);
 	}
@@ -92,15 +132,28 @@ public static unsafe class Graphics {
 			}
 		};
 
+		RenderPassDepthStencilAttachment depthStencilAttachment = new RenderPassDepthStencilAttachment {
+			View = _DepthTexture.RawTextureView, 
+			DepthLoadOp = LoadOp.Clear, 
+			DepthClearValue = 1, 
+			DepthStoreOp = StoreOp.Store, 
+			DepthReadOnly = false, 
+			StencilLoadOp = LoadOp.Clear, 
+			StencilStoreOp = StoreOp.Discard, 
+			StencilReadOnly = true
+		};
+
 		//Create our render pass
 		RenderPassEncoder* renderPass = WebGPU.CommandEncoderBeginRenderPass(encoder, new RenderPassDescriptor {
 			ColorAttachments       = &colorAttachment,
 			ColorAttachmentCount   = 1,
-			DepthStencilAttachment = null
+			DepthStencilAttachment = &depthStencilAttachment
 		});
 
+		WorldGraphics.Draw(renderPass);
+		
 		//Draws a simple textured quad to the screen
-		UiGraphics.TestDraw(renderPass);
+		// UiGraphics.TestDraw(renderPass);
 
 		//End the render pass
 		WebGPU.RenderPassEncoderEnd(renderPass);
@@ -143,6 +196,8 @@ public static unsafe class Graphics {
 	}
 
 	public static void Load() {
+		Input = Window.CreateInput();
+		
 		WebGPU = WebGPU.GetApi();
 
 		//Create our instance
@@ -188,6 +243,7 @@ public static unsafe class Graphics {
 		CreateSwapchain();
 
 		UiGraphics.Initalize();
+		WorldGraphics.Initialize();
 	}
 
 	private static void CreateSwapchain() {
@@ -202,6 +258,8 @@ public static unsafe class Graphics {
 		};
 
 		Swapchain = WebGPU.DeviceCreateSwapChain(Device, Surface, swapChainDescriptor);
+
+		_DepthTexture = new DepthTexture(swapChainDescriptor.Width, swapChainDescriptor.Height);
 	}
 
 	private static void DeviceLost(DeviceLostReason reason, byte* message, void* userData) {

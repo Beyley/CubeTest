@@ -145,6 +145,19 @@ public static unsafe class UiGraphics {
 			StepMode       = VertexStepMode.Vertex,
 			ArrayStride    = (ulong)sizeof(UiVertex)
 		};
+		
+		DepthStencilState state = new DepthStencilState {
+			Format              = DepthTexture.DepthFormat,
+			DepthWriteEnabled   = true,
+			DepthCompare        = CompareFunction.Less,
+			StencilFront        = new StencilFaceState(CompareFunction.Always, StencilOperation.Keep, StencilOperation.Keep, StencilOperation.Keep),
+			StencilBack         = new StencilFaceState(CompareFunction.Always, StencilOperation.Keep, StencilOperation.Keep, StencilOperation.Keep),
+			StencilReadMask     = 0xFFFFFFFF,
+			StencilWriteMask    = 0,
+			DepthBias           = 0,
+			DepthBiasSlopeScale = 0,
+			DepthBiasClamp      = 0
+		};
 
 		RenderPipelineDescriptor renderPipelineDescriptor = new RenderPipelineDescriptor {
 			Vertex = new VertexState {
@@ -165,7 +178,7 @@ public static unsafe class UiGraphics {
 				AlphaToCoverageEnabled = false
 			},
 			Fragment     = &fragmentState,
-			DepthStencil = null,
+			DepthStencil = &state,
 			Layout       = pipelineLayout
 		};
 
