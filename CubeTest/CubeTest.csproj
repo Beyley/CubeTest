@@ -9,40 +9,26 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="BenchmarkDotNet" Version="0.13.5" />
-      <PackageReference Include="Silk.NET.Input.Glfw" Version="2.17.0" />
-      <PackageReference Include="Silk.NET.Input.Sdl" Version="2.17.0" />
-      <PackageReference Include="Silk.NET.WebGPU" Version="2.17.0" />
-      <PackageReference Include="Silk.NET.WebGPU.Extensions.Disposal" Version="2.17.0" />
-      <PackageReference Include="Silk.NET.WebGPU.Native.WGPU" Version="2.17.0" />
-      <PackageReference Include="Silk.NET.Windowing.Glfw" Version="2.17.0" />
-      <PackageReference Include="Silk.NET.Windowing.Sdl" Version="2.17.0" />
-      <PackageReference Include="SixLabors.ImageSharp" Version="3.0.1" />
+        <PackageReference Include="BenchmarkDotNet" Version="0.13.5" />
+        <PackageReference Include="Silk.NET.Input.Glfw" Version="2.17.0" />
+        <PackageReference Include="Silk.NET.Input.Sdl" Version="2.17.0" />
+        <PackageReference Include="Silk.NET.WebGPU" Version="2.17.0" />
+        <PackageReference Include="Silk.NET.WebGPU.Extensions.Disposal" Version="2.17.0" />
+        <PackageReference Include="Silk.NET.WebGPU.Native.WGPU" Version="2.17.0" />
+        <PackageReference Include="Silk.NET.Windowing.Glfw" Version="2.17.0" />
+        <PackageReference Include="Silk.NET.Windowing.Sdl" Version="2.17.0" />
+        <PackageReference Include="SixLabors.ImageSharp" Version="3.0.1" />
     </ItemGroup>
 
     <ItemGroup>
-      <None Remove="Shader.wgsl" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <EmbeddedResource Include="Shaders\Ui.wgsl" />
-      <EmbeddedResource Include="Textures\when.png" />
-      <None Remove="Shaders\World.wgsl" />
-      <EmbeddedResource Include="Shaders\World.wgsl" />
-      <None Remove="Models\cube.obj" />
-      <EmbeddedResource Include="Models\cube.obj" />
-      <None Remove="Models\monkey.obj" />
-      <EmbeddedResource Include="Models\monkey.obj" />
-      <None Remove="Models\windows.obj" />
-      <EmbeddedResource Include="Models\windows.obj" />
-      <None Remove="Models\SM_Deccer_Cubes_Textured.obj" />
-      <EmbeddedResource Include="Models\SM_Deccer_Cubes_Textured.obj" />
-      <None Remove="Models\SM_Deccer_Cubes_Merged_Texture_Atlas.obj" />
-      <EmbeddedResource Include="Models\SM_Deccer_Cubes_Merged_Texture_Atlas.obj" />
-      <None Remove="Textures\T_Atlas.png" />
-      <EmbeddedResource Include="Textures\T_Atlas.png" />
-      <None Remove="Models\sponza.obj" />
-      <EmbeddedResource Include="Models\sponza.obj" />
+        <EmbeddedResource Include="Shaders\Ui.wgsl" />
+        <EmbeddedResource Include="Textures\when.png" />
+        <EmbeddedResource Include="Shaders\World.wgsl" />
+        <EmbeddedResource Include="Models\cube.obj" />
+        <EmbeddedResource Include="Models\windows.obj" />
+        <EmbeddedResource Include="Textures\T_Atlas.png" />
+        <EmbeddedResource Include="Shaders\Mesh.wgsl" />
+        <!-- <EmbeddedResource Include="Models\sponza.obj" /> -->
     </ItemGroup>
 
 </Project>

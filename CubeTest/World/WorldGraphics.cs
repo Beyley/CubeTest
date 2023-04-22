@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using CubeTest.Abstractions;
+using CubeTest.Game;
 using CubeTest.Helpers;
 using CubeTest.ModelLoader;
 using CubeTest.ModelLoader.WavefrontObj;
@@ -18,22 +20,39 @@ public static unsafe class WorldGraphics {
 	private static BindGroupLayout* _TextureSamplerBindGroupLayout;
 	private static BindGroup*       _TextureBindGroup;
 	private static RenderPipeline*  _Pipeline;
-	private static Texture          _Texture;
+	private static Texture          _Texture = null!;
 	private static Sampler*         _Sampler;
 	private static Buffer*          _ProjectionMatrixBuffer;
 	private static Buffer*          _ModelMatrixBuffer;
 	private static Buffer*          _CameraInfoBuffer;
 	private static Buffer*          _LightInfoBuffer;
-	private static Model            _Model;
+	private static Model            _Model = null!;
 	private static ulong            _VertexBufferSize;
 	private static Buffer*          _VertexBuffer;
 	private static ulong            _IndexBufferSize;
 	private static Buffer*          _IndexBuffer;
 
-	public static  Camera  Camera = new Camera();
+	public static Camera Camera = new Camera();
 
 	public static void Dispose() {
+		_Texture.Dispose();
+		Graphics.Disposal.Dispose(_Sampler);
+		Graphics.Disposal.Dispose(_ProjectionMatrixBuffer);
+		Graphics.Disposal.Dispose(_ModelMatrixBuffer);
+		Graphics.Disposal.Dispose(_CameraInfoBuffer);
+		Graphics.Disposal.Dispose(_LightInfoBuffer);
+		Graphics.Disposal.Dispose(_IndexBuffer);
+		Graphics.Disposal.Dispose(_VertexBuffer);
 		Graphics.Disposal.Dispose(_Shader);
+		Graphics.Disposal.Dispose(_TextureBindGroup);
+		Graphics.Disposal.Dispose(_TextureSamplerBindGroupLayout);
+		Graphics.Disposal.Dispose(_ProjectionMatrixBindGroup);
+		Graphics.Disposal.Dispose(_ProjectionMatrixBindGroupLayout);
+		Graphics.Disposal.Dispose(_Pipeline);
+
+		Mesher.Dispose();
+		
+		_Model = null!;
 	}
 
 	public static void Initialize() {
@@ -51,13 +70,16 @@ public static unsafe class WorldGraphics {
 
 		CreatePipeline();
 
-		_Model = new ObjModelLoader().LoadModel(ResourceHelpers.ReadResource("Models/windows.obj"));
+		_Model = new ObjModelLoader().LoadModel(ResourceHelpers.ReadResource("Models/sponza.obj"));
 
-		CreateVertexBuffer();
-		CreateIndexBuffer();
+		CreateModelVertexBuffer();
+		CreateModelIndexBuffer();
+
+		Mesher.Initialize();
+		InitChunkData();
 	}
 
-	private static void CreateVertexBuffer() {
+	private static void CreateModelVertexBuffer() {
 		BufferDescriptor descriptor = new BufferDescriptor {
 			Size  = _VertexBufferSize = (ulong)(sizeof(WorldVertex) * _Model.Vertices.Length),
 			Usage = BufferUsage.Vertex | BufferUsage.CopyDst
@@ -70,8 +92,8 @@ public static unsafe class WorldGraphics {
 			Graphics.WebGPU.QueueWriteBuffer(Graphics.Queue, _VertexBuffer, 0, data, (nuint)_VertexBufferSize);
 		}
 	}
-	
-	private static void CreateIndexBuffer() {
+
+	private static void CreateModelIndexBuffer() {
 		BufferDescriptor descriptor = new BufferDescriptor {
 			Size  = _IndexBufferSize = (ulong)(sizeof(uint) * _Model.Indices.Length),
 			Usage = BufferUsage.Index | BufferUsage.CopyDst
@@ -87,9 +109,9 @@ public static unsafe class WorldGraphics {
 
 	internal static void UpdateProjectionMatrixBuffer() {
 		ModelMatrix model = new ModelMatrix {
-			Model = Matrix4x4.CreateScale(new Vector3(0.25f)) * Matrix4x4.CreateRotationY((Stopwatch.GetTimestamp() / (float)Stopwatch.Frequency) / 4)
+			Model = Matrix4x4.CreateScale(new Vector3(0.2f)) /* * Matrix4x4.CreateRotationY((Stopwatch.GetTimestamp() / (float)Stopwatch.Frequency) / 4) */
 		};
-		
+
 		if (!Matrix4x4.Invert(model.Model, out Matrix4x4 invert))
 			throw new Exception();
 
@@ -106,19 +128,19 @@ public static unsafe class WorldGraphics {
 		Matrix4x4 view = Matrix4x4.CreateLookAt(Camera.Position, Camera.Position + Camera.Front, Camera.Up);
 
 		CameraInfo cameraInfo = new CameraInfo {
-			Position = Camera.Position, 
-			View = view
+			Position = Camera.Position,
+			View     = view
 		};
 
 		LightInfo lightInfo = new LightInfo {
 			// Position = new Vector3(3, 3, 0),
-			Position = Camera.Position,
-			Color    = new Vector3(1, 1, 1),
-			Ambient  = new Vector3(0.05f),
-			Diffuse  = new Vector3(0.5f, 1f, 0.5f), 
+			Position         = Camera.Position,
+			Color            = new Vector3(1, 1, 1),
+			Ambient          = new Vector3(0.05f),
+			Diffuse          = new Vector3(0.5f, 1f, 0.5f),
 			SpecularStrength = 32
 		};
-		
+
 		//Create our projection matrix
 		Matrix4x4 projectionMatrix = Matrix4x4.CreatePerspectiveFieldOfView(70f * (MathF.PI / 180f), (float)Graphics.Window.Size.X / Graphics.Window.Size.Y, 0.1f, 100f);
 
@@ -127,10 +149,10 @@ public static unsafe class WorldGraphics {
 
 		//Write the model matrix info
 		Graphics.WebGPU.QueueWriteBuffer(Graphics.Queue, _ModelMatrixBuffer, 0, &model, (nuint)sizeof(ModelMatrix));
-		
+
 		//Write the camera info
 		Graphics.WebGPU.QueueWriteBuffer(Graphics.Queue, _CameraInfoBuffer, 0, &cameraInfo, (nuint)sizeof(CameraInfo));
-		
+
 		//Write the light info
 		Graphics.WebGPU.QueueWriteBuffer(Graphics.Queue, _LightInfoBuffer, 0, &lightInfo, (nuint)sizeof(LightInfo));
 	}
@@ -142,21 +164,21 @@ public static unsafe class WorldGraphics {
 			Usage            = BufferUsage.Uniform | BufferUsage.CopyDst,
 			MappedAtCreation = false
 		});
-		
+
 		_ModelMatrixBuffer = Graphics.WebGPU.DeviceCreateBuffer(Graphics.Device, new BufferDescriptor {
 			Size = (ulong)sizeof(ModelMatrix),
 			//We will be using this buffer as a uniform, and we need CopyDst to write to it using QueueWriteBuffer
 			Usage            = BufferUsage.Uniform | BufferUsage.CopyDst,
 			MappedAtCreation = false
 		});
-		
+
 		_CameraInfoBuffer = Graphics.WebGPU.DeviceCreateBuffer(Graphics.Device, new BufferDescriptor {
 			Size = (ulong)sizeof(CameraInfo),
 			//We will be using this buffer as a uniform, and we need CopyDst to write to it using QueueWriteBuffer
 			Usage            = BufferUsage.Uniform | BufferUsage.CopyDst,
 			MappedAtCreation = false
 		});
-		
+
 		_LightInfoBuffer = Graphics.WebGPU.DeviceCreateBuffer(Graphics.Device, new BufferDescriptor {
 			Size = (ulong)sizeof(LightInfo),
 			//We will be using this buffer as a uniform, and we need CopyDst to write to it using QueueWriteBuffer
@@ -173,24 +195,24 @@ public static unsafe class WorldGraphics {
 			MagFilter    = FilterMode.Nearest,
 			MinFilter    = FilterMode.Nearest,
 			MipmapFilter = MipmapFilterMode.Nearest,
-			Compare      = CompareFunction.Undefined,
+			Compare      = CompareFunction.Undefined
 		});
 	}
 
 	private static void CreateTestTexture() {
-		_Texture = new Texture(ResourceHelpers.ReadResource("Textures/T_Atlas.png"));
+		_Texture = new Texture(ResourceHelpers.ReadResource("Textures/when.png"));
 	}
 
 	private static void CreateProjectionMatrixBindGroup() {
 		BindGroupLayoutEntry* entries = stackalloc BindGroupLayoutEntry[4];
-		
+
 		entries[0] = new BindGroupLayoutEntry {
 			Binding = 0,
 			Buffer = new BufferBindingLayout {
 				Type           = BufferBindingType.Uniform,
 				MinBindingSize = (ulong)sizeof(Matrix4x4)
 			},
-			Visibility = ShaderStage.Vertex,
+			Visibility = ShaderStage.Vertex
 		};
 		entries[1] = new BindGroupLayoutEntry {
 			Binding = 1,
@@ -198,7 +220,7 @@ public static unsafe class WorldGraphics {
 				Type           = BufferBindingType.Uniform,
 				MinBindingSize = (ulong)sizeof(ModelMatrix)
 			},
-			Visibility = ShaderStage.Vertex,
+			Visibility = ShaderStage.Vertex
 		};
 		entries[2] = new BindGroupLayoutEntry {
 			Binding = 2,
@@ -206,7 +228,7 @@ public static unsafe class WorldGraphics {
 				Type           = BufferBindingType.Uniform,
 				MinBindingSize = (ulong)sizeof(CameraInfo)
 			},
-			Visibility = ShaderStage.Vertex | ShaderStage.Fragment,
+			Visibility = ShaderStage.Vertex | ShaderStage.Fragment
 		};
 		entries[3] = new BindGroupLayoutEntry {
 			Binding = 3,
@@ -214,7 +236,7 @@ public static unsafe class WorldGraphics {
 				Type           = BufferBindingType.Uniform,
 				MinBindingSize = (ulong)sizeof(LightInfo)
 			},
-			Visibility = ShaderStage.Fragment,
+			Visibility = ShaderStage.Fragment
 		};
 
 		_ProjectionMatrixBindGroupLayout = Graphics.WebGPU.DeviceCreateBindGroupLayout
@@ -378,7 +400,7 @@ public static unsafe class WorldGraphics {
 			DepthBiasSlopeScale = 0,
 			DepthBiasClamp      = 0
 		};
-		
+
 		RenderPipelineDescriptor renderPipelineDescriptor = new RenderPipelineDescriptor {
 			Vertex = new VertexState {
 				Module      = _Shader,
@@ -399,10 +421,12 @@ public static unsafe class WorldGraphics {
 			},
 			Fragment     = &fragmentState,
 			DepthStencil = &state,
-			Layout       = pipelineLayout,
+			Layout       = pipelineLayout
 		};
 
 		_Pipeline = Graphics.WebGPU.DeviceCreateRenderPipeline(Graphics.Device, renderPipelineDescriptor);
+
+		Graphics.Disposal.Dispose(pipelineLayout);
 
 		SilkMarshal.Free((nint)renderPipelineDescriptor.Vertex.EntryPoint);
 		SilkMarshal.Free((nint)fragmentState.EntryPoint);
@@ -410,17 +434,53 @@ public static unsafe class WorldGraphics {
 		Console.WriteLine($"Created pipeline 0x{(nuint)_Pipeline:x}");
 	}
 
-	public static void Draw(RenderPassEncoder* renderPass) {
+	private static Buffer* _TempChunkBuffer;
+
+	private static void InitChunkData() {
+		Random r = new Random();
+		for (int i = 0; i < Chunk.CHUNK_SIZE_CU; i++)
+			_Chunk.Blocks[i] = r.Next() % 2 == 0 ? (uint)BlockId.Dirt : (uint)BlockId.Air;
+
+		_TempChunkBuffer = Graphics.WebGPU.DeviceCreateBuffer(Graphics.Device, new BufferDescriptor {
+			Size             = Mesher.BlocksBufferSize,
+			Usage            = BufferUsage.CopySrc | BufferUsage.MapWrite,
+			MappedAtCreation = true
+		});
+
+		void* map = Graphics.WebGPU.BufferGetMappedRange(_TempChunkBuffer, 0, (nuint)Mesher.BlocksBufferSize);
+
+		fixed (void* blocks = _Chunk.Blocks) {
+			Unsafe.CopyBlock(map, blocks, (uint)Mesher.BlocksBufferSize);
+		}
+
+		Graphics.WebGPU.BufferUnmap(_TempChunkBuffer);
+	}
+
+	private static Chunk _Chunk = new Chunk();
+
+	public static void Draw(CommandEncoder* commandEncoder, RenderPassEncoder* renderPass) {
+		//Copy chunk data from temp buffer to blocks buffer
+		Graphics.WebGPU.CommandEncoderCopyBufferToBuffer(commandEncoder, _TempChunkBuffer, 0, Mesher.BlocksBuffer, 0, Mesher.BlocksBufferSize);
+
+		Mesher.ResetCounts();
+
+		//Mesh
+		Mesher.Mesh(commandEncoder);
+
 		UpdateProjectionMatrixBuffer();
-		
+
 		Graphics.WebGPU.RenderPassEncoderSetPipeline(renderPass, _Pipeline);
 		Graphics.WebGPU.RenderPassEncoderSetBindGroup(renderPass, 0, _TextureBindGroup, 0, null);
 		Graphics.WebGPU.RenderPassEncoderSetBindGroup(renderPass, 1, _ProjectionMatrixBindGroup, 0, null);
-		Graphics.WebGPU.RenderPassEncoderSetVertexBuffer(renderPass, 0, _VertexBuffer, 0, _VertexBufferSize);
-		Graphics.WebGPU.RenderPassEncoderSetIndexBuffer(renderPass, _IndexBuffer, IndexFormat.Uint32, 0, _IndexBufferSize);
-		Graphics.WebGPU.RenderPassEncoderDrawIndexed(renderPass, (uint)_Model.Indices.Length, 1, 0, 0, 0);
+		Graphics.WebGPU.RenderPassEncoderSetVertexBuffer(renderPass, 0, Mesher.VertexOutputBuffer, 0, Mesher.VertexOutputBufferSize);
+		Graphics.WebGPU.RenderPassEncoderSetIndexBuffer(renderPass, Mesher.IndexOutputBuffer, IndexFormat.Uint32, 0, Mesher.IndexOutputBufferSize);
+		Graphics.WebGPU.RenderPassEncoderDrawIndexedIndirect(renderPass, Mesher.CountsBuffer, 0);
+
+		// Graphics.WebGPU.RenderPassEncoderSetVertexBuffer(renderPass, 0, _VertexBuffer, 0, _VertexBufferSize);
+		// Graphics.WebGPU.RenderPassEncoderSetIndexBuffer(renderPass, _IndexBuffer, IndexFormat.Uint32, 0, _IndexBufferSize);
+		// Graphics.WebGPU.RenderPassEncoderDrawIndexed(renderPass, (uint)_Model.Indices.Length, 1, 0, 0, 0);
 	}
-	
+
 	private static void CreateShader() {
 		byte[] shader = ResourceHelpers.ReadResource("Shaders/World.wgsl");
 

@@ -29,18 +29,18 @@ public static unsafe class UiGraphics {
 
 	public static void Dispose() {
 		Graphics.Disposal.Dispose(_VertexBuffer);
-		
+
 		Graphics.Disposal.Dispose(_TextureSamplerBindGroupLayout);
 		Graphics.Disposal.Dispose(_TextureBindGroup);
-		
+
 		Graphics.Disposal.Dispose(_ProjectionMatrixBindGroupLayout);
 		Graphics.Disposal.Dispose(_ProjectionMatrixBindGroup);
-		
+
 		Graphics.Disposal.Dispose(_Sampler);
 		_Texture.Dispose();
-		
+
 		Graphics.Disposal.Dispose(_ProjectionMatrixBuffer);
-		
+
 		Graphics.Disposal.Dispose(_Pipeline);
 
 		Graphics.Disposal.Dispose(_Shader);
@@ -48,12 +48,12 @@ public static unsafe class UiGraphics {
 
 	public static void Initalize() {
 		CreateShader();
-		
+
 		CreateProjectionMatrixBuffer();
 		UpdateProjectionMatrixBuffer();
 
 		CreateTestTexture();
-		
+
 		CreateSampler();
 
 		CreateProjectionMatrixBindGroup();
@@ -148,7 +148,7 @@ public static unsafe class UiGraphics {
 			StepMode       = VertexStepMode.Vertex,
 			ArrayStride    = (ulong)sizeof(UiVertex)
 		};
-		
+
 		DepthStencilState state = new DepthStencilState {
 			Format              = DepthTexture.DepthFormat,
 			DepthWriteEnabled   = true,
@@ -187,6 +187,8 @@ public static unsafe class UiGraphics {
 
 		_Pipeline = Graphics.WebGPU.DeviceCreateRenderPipeline(Graphics.Device, renderPipelineDescriptor);
 
+		Graphics.Disposal.Dispose(pipelineLayout);
+
 		SilkMarshal.Free((nint)renderPipelineDescriptor.Vertex.EntryPoint);
 		SilkMarshal.Free((nint)fragmentState.EntryPoint);
 
@@ -200,7 +202,7 @@ public static unsafe class UiGraphics {
 				Type           = BufferBindingType.Uniform,
 				MinBindingSize = (ulong)sizeof(Matrix4x4)
 			},
-			Visibility = ShaderStage.Vertex,
+			Visibility = ShaderStage.Vertex
 		};
 
 		_ProjectionMatrixBindGroupLayout = Graphics.WebGPU.DeviceCreateBindGroupLayout
@@ -305,7 +307,7 @@ public static unsafe class UiGraphics {
 			MagFilter    = FilterMode.Nearest,
 			MinFilter    = FilterMode.Nearest,
 			MipmapFilter = MipmapFilterMode.Nearest,
-			Compare      = CompareFunction.Undefined,
+			Compare      = CompareFunction.Undefined
 		});
 	}
 

@@ -1,6 +1,6 @@
 using System.Numerics;
 
-namespace CubeTest.World; 
+namespace CubeTest.World;
 
 public struct ModelMatrix {
 	public Matrix4x4 Model;

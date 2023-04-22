@@ -1,14 +1,14 @@
 using Silk.NET.Maths;
 using Silk.NET.WebGPU;
 
-namespace CubeTest.Abstractions; 
+namespace CubeTest.Abstractions;
 
 public unsafe class DepthTexture {
 	public const TextureFormat DepthFormat = TextureFormat.Depth16Unorm;
-	
+
 	public Silk.NET.WebGPU.Texture* RawTexture;
-	public TextureView*             RawTextureView;	
-	
+	public TextureView*             RawTextureView;
+
 	public Vector2D<int> Size;
 
 	public DepthTexture(uint width, uint height) {
@@ -44,7 +44,7 @@ public unsafe class DepthTexture {
 
 		Console.WriteLine($"Created depth texture of size {this.Size}");
 	}
-	
+
 	private void ReleaseUnmanagedResources() {
 		Console.WriteLine($"Deleting texture of size {this.Size}");
 		Graphics.Disposal.Dispose(this.RawTextureView);

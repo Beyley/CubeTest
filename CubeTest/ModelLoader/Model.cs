@@ -1,6 +1,6 @@
 using CubeTest.World;
 
-namespace CubeTest.ModelLoader; 
+namespace CubeTest.ModelLoader;
 
 public class Model {
 	public WorldVertex[] Vertices;

@@ -18,8 +18,8 @@ using Color = Silk.NET.WebGPU.Color;
 namespace CubeTest;
 
 public static unsafe class Graphics {
-	public static IWindow Window = null!;
-	private static IInputContext Input = null!;
+	public static  IWindow       Window = null!;
+	private static IInputContext Input  = null!;
 
 	// ReSharper disable once InconsistentNaming
 	public static WebGPU WebGPU = null!;
@@ -60,35 +60,29 @@ public static unsafe class Graphics {
 		Vector2 last = Vector2.Zero;
 		Window.Update += d => {
 			foreach (IMouse mouse in Input.Mice) {
-				mouse.Cursor.CursorMode = CursorMode.Raw;
-				
+				// mouse.Cursor.CursorMode = CursorMode.Raw;
+
 				WorldGraphics.Camera.Pitch -= (mouse.Position.Y - last.Y) * 0.1f;
-				WorldGraphics.Camera.Yaw += (mouse.Position.X- last.X) * 0.1f;
-				
+				WorldGraphics.Camera.Yaw   += (mouse.Position.X - last.X) * 0.1f;
+
 				last = mouse.Position;
 			}
 
 			foreach (IKeyboard kb in Input.Keyboards) {
-				if (kb.IsKeyPressed(Key.A)) {
+				if (kb.IsKeyPressed(Key.A))
 					WorldGraphics.Camera.Position -= Vector3.Normalize(Vector3.Cross(WorldGraphics.Camera.Front, WorldGraphics.Camera.Up)) * (float)d;
-				}
-				if (kb.IsKeyPressed(Key.D)) {
+				if (kb.IsKeyPressed(Key.D))
 					WorldGraphics.Camera.Position += Vector3.Normalize(Vector3.Cross(WorldGraphics.Camera.Front, WorldGraphics.Camera.Up)) * (float)d;
-				}
-				
-				if (kb.IsKeyPressed(Key.ShiftLeft)) {
+
+				if (kb.IsKeyPressed(Key.ShiftLeft))
 					WorldGraphics.Camera.Position -= WorldGraphics.Camera.Up * (float)d;
-				}
-				if (kb.IsKeyPressed(Key.Space)) {
+				if (kb.IsKeyPressed(Key.Space))
 					WorldGraphics.Camera.Position += WorldGraphics.Camera.Up * (float)d;
-				}
-				
-				if (kb.IsKeyPressed(Key.W)) {
+
+				if (kb.IsKeyPressed(Key.W))
 					WorldGraphics.Camera.Position += WorldGraphics.Camera.Front * (float)d;
-				}
-				if (kb.IsKeyPressed(Key.S)) {
+				if (kb.IsKeyPressed(Key.S))
 					WorldGraphics.Camera.Position -= WorldGraphics.Camera.Front * (float)d;
-				}
 			}
 		};
 
@@ -114,9 +108,8 @@ public static unsafe class Graphics {
 		TextureView* nextView = GetNextTextureView();
 
 		//Lets skip this frame, and try again next frame
-		if (nextView == null) {
+		if (nextView == null)
 			return;
-		}
 
 		//Create our command encoder
 		CommandEncoder* encoder = WebGPU.DeviceCreateCommandEncoder(Device, new CommandEncoderDescriptor());
@@ -136,13 +129,13 @@ public static unsafe class Graphics {
 		};
 
 		RenderPassDepthStencilAttachment depthStencilAttachment = new RenderPassDepthStencilAttachment {
-			View = _DepthTexture.RawTextureView, 
-			DepthLoadOp = LoadOp.Clear, 
-			DepthClearValue = 1, 
-			DepthStoreOp = StoreOp.Store, 
-			DepthReadOnly = false, 
-			StencilLoadOp = LoadOp.Clear, 
-			StencilStoreOp = StoreOp.Discard, 
+			View            = _DepthTexture.RawTextureView,
+			DepthLoadOp     = LoadOp.Clear,
+			DepthClearValue = 1,
+			DepthStoreOp    = StoreOp.Store,
+			DepthReadOnly   = false,
+			StencilLoadOp   = LoadOp.Clear,
+			StencilStoreOp  = StoreOp.Discard,
 			StencilReadOnly = true
 		};
 
@@ -153,8 +146,8 @@ public static unsafe class Graphics {
 			DepthStencilAttachment = &depthStencilAttachment
 		});
 
-		WorldGraphics.Draw(renderPass);
-		
+		WorldGraphics.Draw(encoder, renderPass);
+
 		//Draws a simple textured quad to the screen
 		// UiGraphics.TestDraw(renderPass);
 
@@ -200,7 +193,7 @@ public static unsafe class Graphics {
 
 	public static void Load() {
 		Input = Window.CreateInput();
-		
+
 		WebGPU = WebGPU.GetApi();
 
 		//Create our instance
@@ -215,9 +208,8 @@ public static unsafe class Graphics {
 			PowerPreference      = PowerPreference.HighPerformance,
 			ForceFallbackAdapter = false
 		}, new PfnRequestAdapterCallback((status, adapter, message, userData) => {
-			if (status != RequestAdapterStatus.Success) {
+			if (status != RequestAdapterStatus.Success)
 				throw new Exception($"Unable to create adapter: {SilkMarshal.PtrToString((nint)message)}");
-			}
 
 			Adapter = adapter;
 			Console.WriteLine($"Adapter 0x{(nint)Adapter:x8} created!");
@@ -225,9 +217,8 @@ public static unsafe class Graphics {
 
 		//Create our device
 		WebGPU.AdapterRequestDevice(Adapter, null, new PfnRequestDeviceCallback((status, device, message, userData) => {
-			if (status != RequestDeviceStatus.Success) {
+			if (status != RequestDeviceStatus.Success)
 				throw new Exception($"Unable to create device: {SilkMarshal.PtrToString((nint)message)}");
-			}
 
 			Device = device;
 			Console.WriteLine($"Device 0x{(nint)Device:x8} created!");
@@ -242,7 +233,7 @@ public static unsafe class Graphics {
 		//Set up our error callbacks
 		WebGPU.DeviceSetUncapturedErrorCallback(Device, new PfnErrorCallback(UncapturedError), null);
 		WebGPU.DeviceSetDeviceLostCallback(Device, new PfnDeviceLostCallback(DeviceLost), null);
-		
+
 		CreateSwapchain();
 
 		UiGraphics.Initalize();
@@ -270,6 +261,7 @@ public static unsafe class Graphics {
 	}
 
 	private static void UncapturedError(ErrorType type, byte* message, void* userData) {
+		Console.WriteLine($"Uncaptured error: {SilkMarshal.PtrToString((nint)message)}");
 		throw new Exception($"Uncaptured WebGPU error! {SilkMarshal.PtrToString((nint)message)} type: {type}");
 	}
 }

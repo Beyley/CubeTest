@@ -1,6 +1,6 @@
 using System.Reflection;
 
-namespace CubeTest.Helpers; 
+namespace CubeTest.Helpers;
 
 public static class ResourceHelpers {
 	/// <summary>
@@ -12,9 +12,8 @@ public static class ResourceHelpers {
 		Assembly? assembly = typeof(ResourceHelpers).Assembly;
 		Stream?   stream   = assembly.GetManifestResourceStream(assembly.GetName().Name + "." + name.Replace("/", "."));
 
-		if (stream == null) {
+		if (stream == null)
 			throw new Exception($"Unable to find resource {name}.");
-		}
 
 		byte[]? buffer = new byte[stream.Length];
 		stream.Read(buffer, 0, buffer.Length);

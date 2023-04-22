@@ -38,19 +38,18 @@ public class ObjModelLoader : ModelLoader {
 			Indices  = new uint[faceCount        * 3]
 		};
 
-		for (int i = 0; i < model.Indices.Length; i++) {
+		for (int i = 0; i < model.Indices.Length; i++)
 			model.Indices[i] = (uint)i;
-		}
 
 		for (int i = 0; i < faceCount; i++) {
 			model.Vertices[i * 3 + 0].Position = definitions.Positions[definitions.PositionIndices[i * 3 + 0]];
 			model.Vertices[i * 3 + 1].Position = definitions.Positions[definitions.PositionIndices[i * 3 + 1]];
 			model.Vertices[i * 3 + 2].Position = definitions.Positions[definitions.PositionIndices[i * 3 + 2]];
-			
+
 			model.Vertices[i * 3 + 0].Normal = definitions.Normals[definitions.NormalIndices[i * 3 + 0]];
 			model.Vertices[i * 3 + 1].Normal = definitions.Normals[definitions.NormalIndices[i * 3 + 1]];
 			model.Vertices[i * 3 + 2].Normal = definitions.Normals[definitions.NormalIndices[i * 3 + 2]];
-			
+
 			model.Vertices[i * 3 + 0].TexCoord = definitions.TexCoords[definitions.TexCoordIndices[i * 3 + 0]] * new Vector2(1, -1);
 			model.Vertices[i * 3 + 1].TexCoord = definitions.TexCoords[definitions.TexCoordIndices[i * 3 + 1]] * new Vector2(1, -1);
 			model.Vertices[i * 3 + 2].TexCoord = definitions.TexCoords[definitions.TexCoordIndices[i * 3 + 2]] * new Vector2(1, -1);
@@ -86,9 +85,8 @@ public class ObjModelLoader : ModelLoader {
 				endIndex = i;
 				break;
 			}
-			if (endIndex == 0) {
+			if (endIndex == 0)
 				endIndex = span.Length;
-			}
 
 			ReadOnlySpan<byte> floatSpan = span[startIndex..endIndex];
 
@@ -99,13 +97,11 @@ public class ObjModelLoader : ModelLoader {
 			// Console.WriteLine("\"");
 #endif
 
-			if (floatSpan.Length == 0) {
+			if (floatSpan.Length == 0)
 				throw new Exception("Failed to parse float");
-			}
 
-			if (!Utf8Parser.TryParse(floatSpan, out float result, out int bytesConsumed)) {
+			if (!Utf8Parser.TryParse(floatSpan, out float result, out int bytesConsumed))
 				throw new Exception("Failed to parse float");
-			}
 
 			startIndex = endIndex + 1;
 			return result;
@@ -120,9 +116,8 @@ public class ObjModelLoader : ModelLoader {
 				endIndex = i;
 				break;
 			}
-			if (endIndex == 0) {
+			if (endIndex == 0)
 				endIndex = span.Length;
-			}
 
 			ReadOnlySpan<byte> intSpan = span[startIndex..endIndex];
 
@@ -133,27 +128,23 @@ public class ObjModelLoader : ModelLoader {
 			// Console.WriteLine("\"");
 #endif
 
-			if (intSpan.Length == 0) {
+			if (intSpan.Length == 0)
 				throw new Exception("Failed to parse float");
-			}
 
 			int parsed = 0;
 
-			if (!Utf8Parser.TryParse(intSpan, out uint resultP, out int bytesConsumed)) {
+			if (!Utf8Parser.TryParse(intSpan, out uint resultP, out int bytesConsumed))
 				throw new Exception("Failed to parse float");
-			}
 			parsed += bytesConsumed + 1;
 
 			uint resultT = 0;
-			if (parsed < intSpan.Length && !Utf8Parser.TryParse(intSpan[parsed..], out resultT, out bytesConsumed)) {
+			if (parsed < intSpan.Length && !Utf8Parser.TryParse(intSpan[parsed..], out resultT, out bytesConsumed))
 				throw new Exception("Failed to parse float");
-			}
 			parsed += bytesConsumed + 1;
 
 			uint resultN = 0;
-			if (parsed < intSpan.Length && !Utf8Parser.TryParse(intSpan[parsed..], out resultN, out bytesConsumed)) {
+			if (parsed < intSpan.Length && !Utf8Parser.TryParse(intSpan[parsed..], out resultN, out bytesConsumed))
 				throw new Exception("Failed to parse float");
-			}
 			parsed += bytesConsumed + 1;
 
 			startIndex = endIndex + 1;
@@ -169,9 +160,8 @@ public class ObjModelLoader : ModelLoader {
 			// Console.WriteLine("\"");
 #endif
 
-			if (line.Length == 0) {
+			if (line.Length == 0)
 				return;
-			}
 
 			//trigger for v and not for vt
 			if (line[0] == 'v' && line[1] == ' ') {
@@ -217,24 +207,24 @@ public class ObjModelLoader : ModelLoader {
 				ReadOnlySpan<byte> lineWithoutFirstChar = line[2..];
 
 				int startIndex = 0;
-				
+
 				//Read the first index sex
 				(uint p, uint t, uint n) index = ReadIndex(ref startIndex, lineWithoutFirstChar);
-				
+
 				definition.PositionIndices[positionIndexIndex++] = index.p;
 				definition.TexCoordIndices[textureIndexIndex++]  = index.t;
 				definition.NormalIndices[normalIndexIndex++]     = index.n;
-				
+
 				//Read the second index set
 				index = ReadIndex(ref startIndex, lineWithoutFirstChar);
-				
+
 				definition.PositionIndices[positionIndexIndex++] = index.p;
 				definition.TexCoordIndices[textureIndexIndex++]  = index.t;
 				definition.NormalIndices[normalIndexIndex++]     = index.n;
-				
+
 				//Read the third index set
 				index = ReadIndex(ref startIndex, lineWithoutFirstChar);
-				
+
 				definition.PositionIndices[positionIndexIndex++] = index.p;
 				definition.TexCoordIndices[textureIndexIndex++]  = index.t;
 				definition.NormalIndices[normalIndexIndex++]     = index.n;
@@ -242,7 +232,9 @@ public class ObjModelLoader : ModelLoader {
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
-		bool IsSomeNewline(byte b) => b == '\r' || b == '\n';
+		bool IsSomeNewline(byte b) {
+			return b == '\r' || b == '\n';
+		}
 
 		byte last = 0;
 		for (int i = 0; i < data.Length; i++) {
@@ -273,29 +265,23 @@ public class ObjModelLoader : ModelLoader {
 		for (int i = 0; i < data.Length; i++) {
 			byte curr = data[i];
 
-			if (curr == 'v' && wasLastCharNewline) {
+			if (curr == 'v' && wasLastCharNewline)
 				verticesP++;
-			}
 
-			if (last == 'v' && curr != ' ' && lastWasLastCharNewline) {
+			if (last == 'v' && curr != ' ' && lastWasLastCharNewline)
 				verticesP--;
-			}
 
-			if (last == 'v' && curr == 'n' && lastWasLastCharNewline) {
+			if (last == 'v' && curr == 'n' && lastWasLastCharNewline)
 				verticesN++;
-			}
 
-			if (last == 'v' && curr == 't' && lastWasLastCharNewline) {
+			if (last == 'v' && curr == 't' && lastWasLastCharNewline)
 				verticesT++;
-			}
 
 			lastWasLastCharNewline = wasLastCharNewline;
-			if (curr == '\r' || curr == '\n') {
+			if (curr == '\r' || curr == '\n')
 				wasLastCharNewline = true;
-			}
-			else {
+			else
 				wasLastCharNewline = false;
-			}
 
 			last = curr;
 		}
@@ -314,22 +300,18 @@ public class ObjModelLoader : ModelLoader {
 		for (int i = 0; i < data.Length; i++) {
 			byte curr = data[i];
 
-			if (curr == 'f' && wasLastCharNewline) {
+			if (curr == 'f' && wasLastCharNewline)
 				//TODO: count the number of actual vertices in the face, right now lets just assume a triangle
 				vertices += 3;
-			}
 
-			if (last == 'f' && curr != ' ' && lastWasLastCharNewline) {
+			if (last == 'f' && curr != ' ' && lastWasLastCharNewline)
 				vertices -= 3;
-			}
 
 			lastWasLastCharNewline = wasLastCharNewline;
-			if (curr == '\r' || curr == '\n') {
+			if (curr == '\r' || curr == '\n')
 				wasLastCharNewline = true;
-			}
-			else {
+			else
 				wasLastCharNewline = false;
-			}
 
 			last = curr;
 		}

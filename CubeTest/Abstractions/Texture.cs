@@ -8,7 +8,7 @@ public unsafe class Texture : IDisposable {
 	public TextureView*             RawTextureView;
 
 	public Vector2D<int> Size;
-	
+
 	public Texture(byte[] data) {
 		using Image<Rgba32> image = Image.Load<Rgba32>(data);
 
@@ -17,7 +17,7 @@ public unsafe class Texture : IDisposable {
 
 	private void Load(Image<Rgba32> image) {
 		this.Size = new Vector2D<int>(image.Width, image.Height);
-		
+
 		TextureFormat viewFormat = TextureFormat.Rgba8Unorm;
 
 		TextureDescriptor descriptor = new TextureDescriptor {
@@ -67,8 +67,9 @@ public unsafe class Texture : IDisposable {
 					DepthOrArrayLayers = 1
 				};
 
-				fixed (void* dataPtr = row)
+				fixed (void* dataPtr = row) {
 					Graphics.WebGPU.QueueWriteTexture(Graphics.Queue, imageCopyTexture, dataPtr, (nuint)(sizeof(Rgba32) * row.Length), layout, extent);
+				}
 			}
 		});
 		Console.WriteLine($"Created texture of size {this.Size}");

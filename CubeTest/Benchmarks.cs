@@ -6,8 +6,7 @@ using CubeTest.ModelLoader.WavefrontObj;
 
 namespace CubeTest;
 
-[SimpleJob(RuntimeMoniker.Net70, baseline: true)]
-[MemoryDiagnoser]
+[SimpleJob(RuntimeMoniker.Net70, baseline: true), MemoryDiagnoser]
 public class Benchmarks {
 	private byte[]         _data;
 	private ObjModelLoader _loader;
