@@ -104,6 +104,8 @@ public static unsafe class Graphics {
 				if(kb.IsKeyPressed(Key.Right))
 					WorldGraphics.Camera.Yaw += cameraSpeed * (float)d;
 			}
+			
+			WorldGraphics.Camera.Pitch = Math.Clamp(WorldGraphics.Camera.Pitch, -89.99f, 89.99f);
 		};
 
 		Window.Run();
