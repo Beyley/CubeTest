@@ -70,7 +70,7 @@ public static unsafe class WorldGraphics {
 
 		CreatePipeline();
 
-		_Model = new ObjModelLoader().LoadModel(ResourceHelpers.ReadResource("Models/sponza.obj"));
+		_Model = new ObjModelLoader().LoadModel(ResourceHelpers.ReadResource("Models/cube.obj"));
 
 		CreateModelVertexBuffer();
 		CreateModelIndexBuffer();
