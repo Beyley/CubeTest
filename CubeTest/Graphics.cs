@@ -60,11 +60,18 @@ public static unsafe class Graphics {
 		Vector2 last = Vector2.Zero;
 		Window.Update += d => {
 			foreach (IMouse mouse in Input.Mice) {
-				// mouse.Cursor.CursorMode = CursorMode.Raw;
-
-				WorldGraphics.Camera.Pitch -= (mouse.Position.Y - last.Y) * 0.1f;
-				WorldGraphics.Camera.Yaw   += (mouse.Position.X - last.X) * 0.1f;
-
+				if (mouse.IsButtonPressed(MouseButton.Left))
+				{
+					mouse.Cursor.CursorMode = CursorMode.Raw;
+			
+					WorldGraphics.Camera.Pitch -= (mouse.Position.Y - last.Y) * 0.1f;
+					WorldGraphics.Camera.Yaw   += (mouse.Position.X - last.X) * 0.1f;
+				}
+				else
+				{
+					mouse.Cursor.CursorMode = CursorMode.Normal;
+				}
+				
 				last = mouse.Position;
 			}
 
@@ -83,6 +90,19 @@ public static unsafe class Graphics {
 					WorldGraphics.Camera.Position += WorldGraphics.Camera.Front * (float)d;
 				if (kb.IsKeyPressed(Key.S))
 					WorldGraphics.Camera.Position -= WorldGraphics.Camera.Front * (float)d;
+				
+				float cameraSpeed = 150f;
+				if (kb.IsKeyPressed(Key.ControlLeft))
+					cameraSpeed /= 2;
+				
+				if(kb.IsKeyPressed(Key.Up))
+					WorldGraphics.Camera.Pitch += cameraSpeed * (float)d;
+				if(kb.IsKeyPressed(Key.Down))
+					WorldGraphics.Camera.Pitch -= cameraSpeed * (float)d;
+				if(kb.IsKeyPressed(Key.Left))
+					WorldGraphics.Camera.Yaw -= cameraSpeed * (float)d;
+				if(kb.IsKeyPressed(Key.Right))
+					WorldGraphics.Camera.Yaw += cameraSpeed * (float)d;
 			}
 		};
 
