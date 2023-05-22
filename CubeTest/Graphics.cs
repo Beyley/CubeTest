@@ -90,6 +90,19 @@ public static unsafe class Graphics {
 					WorldGraphics.Camera.Position += WorldGraphics.Camera.Front * (float)d;
 				if (kb.IsKeyPressed(Key.S))
 					WorldGraphics.Camera.Position -= WorldGraphics.Camera.Front * (float)d;
+				
+				float cameraSpeed = 150f;
+				if (kb.IsKeyPressed(Key.ControlLeft))
+					cameraSpeed /= 2;
+				
+				if(kb.IsKeyPressed(Key.Up))
+					WorldGraphics.Camera.Pitch += cameraSpeed * (float)d;
+				if(kb.IsKeyPressed(Key.Down))
+					WorldGraphics.Camera.Pitch -= cameraSpeed * (float)d;
+				if(kb.IsKeyPressed(Key.Left))
+					WorldGraphics.Camera.Yaw -= cameraSpeed * (float)d;
+				if(kb.IsKeyPressed(Key.Right))
+					WorldGraphics.Camera.Yaw += cameraSpeed * (float)d;
 			}
 		};
 
