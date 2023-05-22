@@ -136,17 +136,17 @@ public static unsafe class Graphics {
 		//Create our command encoder
 		CommandEncoder* encoder = WebGPU.DeviceCreateCommandEncoder(Device, new CommandEncoderDescriptor());
 
-		//Create our colour attatchment, with a clear value of green
+		//Create our colour attachment, with a clear value of sky blue
 		RenderPassColorAttachment colorAttachment = new RenderPassColorAttachment {
 			View          = nextView,
 			ResolveTarget = null,
 			LoadOp        = LoadOp.Clear,
 			StoreOp       = StoreOp.Store,
 			ClearValue = new Color {
-				R = 0,
-				G = 1,
-				B = 0,
-				A = 1
+				R = 70 / 255d,
+				G = 179 / 255d,
+				B = 234 / 255d,
+				A = 1 / 255d,
 			}
 		};
 
