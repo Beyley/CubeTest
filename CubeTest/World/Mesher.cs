@@ -142,7 +142,7 @@ public static unsafe class Mesher {
 
 	private static void CreateCountsBuffer() {
 		CountsBuffer = Graphics.WebGPU.DeviceCreateBuffer(Graphics.Device, new BufferDescriptor {
-			Usage            = BufferUsage.Storage | BufferUsage.CopyDst | BufferUsage.Indirect,
+			Usage            = BufferUsage.Storage | BufferUsage.CopyDst | BufferUsage.Indirect | BufferUsage.CopySrc,
 			Size             = CountsBufferSize = (ulong)sizeof(AtomicCounts),
 			MappedAtCreation = false
 		});
@@ -176,13 +176,13 @@ public static unsafe class Mesher {
 	private static void CreateOutputBuffers() {
 		VertexOutputBuffer = Graphics.WebGPU.DeviceCreateBuffer(Graphics.Device, new BufferDescriptor {
 			Label            = null,
-			Usage            = BufferUsage.Storage | BufferUsage.Vertex,
+			Usage            = BufferUsage.Storage | BufferUsage.Vertex | BufferUsage.CopySrc,
 			Size             = VertexOutputBufferSize = (ulong)(sizeof(WorldVertex) * Chunk.CHUNK_SIZE_CU * 6 * 4), //size of one vertex * blocks in chunk * 6 faces * 4 vertices per face
 			MappedAtCreation = false
 		});
 		IndexOutputBuffer = Graphics.WebGPU.DeviceCreateBuffer(Graphics.Device, new BufferDescriptor {
 			Label            = null,
-			Usage            = BufferUsage.Storage | BufferUsage.Index,
+			Usage            = BufferUsage.Storage | BufferUsage.Index | BufferUsage.CopySrc,
 			Size             = IndexOutputBufferSize = sizeof(uint) * Chunk.CHUNK_SIZE_CU * 6 * 6, //size of one index * blocks in chunk * 6 faces * 6 indices per face
 			MappedAtCreation = false
 		});

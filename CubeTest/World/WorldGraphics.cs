@@ -165,12 +165,6 @@ public static unsafe class WorldGraphics {
 
 		//Write the light info
 		Graphics.WebGPU.QueueWriteBuffer(Graphics.Queue, _LightInfoBuffer, 0, &lightInfo, (nuint)sizeof(LightInfo));
-		
-		// // Create our offset
-		// Vector3 positionOffset = Vector3.Zero;
-		//
-		// // Write the offset
-		// Graphics.WebGPU.QueueWriteBuffer(Graphics.Queue, _PositionOffsetBuffer, 0, &positionOffset, (nuint)sizeof(Vector3));
 	}
 
 	private static void CreateMatrixBuffers() {
@@ -479,11 +473,55 @@ public static unsafe class WorldGraphics {
 	private const int TotalChunkCount = RenderDistance * RenderDistance;
 	
 	private static readonly Chunk[] Chunks = new Chunk[TotalChunkCount];
-	private static readonly Buffer*[] TempChunkBuffers = new Buffer*[TotalChunkCount]; 
+	private static readonly Buffer*[] TempChunkBuffers = new Buffer*[TotalChunkCount];
+	
+	private static bool _HasMeshed = false;
+	private static readonly MeshedChunk[] MeshedChunks = new MeshedChunk[TotalChunkCount]; 
 
 	public static void Draw(CommandEncoder* commandEncoder, RenderPassEncoder* renderPass)
 	{
-		MeshedChunk[] chunks = new MeshedChunk[TotalChunkCount];
+		if (!_HasMeshed)
+		{
+			_HasMeshed = true;
+			MeshChunks(commandEncoder);
+		}
+
+		UpdateProjectionMatrixBuffer();
+		Graphics.WebGPU.RenderPassEncoderSetPipeline(renderPass, _Pipeline);
+		Graphics.WebGPU.RenderPassEncoderSetBindGroup(renderPass, 0, _TextureBindGroup, 0, null);
+		Graphics.WebGPU.RenderPassEncoderSetBindGroup(renderPass, 1, _ProjectionMatrixBindGroup, 0, null);
+		
+		// Render pass
+		foreach (MeshedChunk chunk in MeshedChunks)
+		{
+			DrawChunk(renderPass, chunk);
+		}
+	}
+
+	private static void DrawChunk(RenderPassEncoder* renderPass, MeshedChunk chunk)
+	{
+		Graphics.WebGPU.RenderPassEncoderSetVertexBuffer(renderPass, 0, chunk.VertexBuffer, 0, Mesher.VertexOutputBufferSize);
+		Graphics.WebGPU.RenderPassEncoderSetIndexBuffer(renderPass, chunk.IndexBuffer, IndexFormat.Uint32, 0, Mesher.IndexOutputBufferSize);
+		
+		Graphics.WebGPU.RenderPassEncoderDrawIndexedIndirect(renderPass, chunk.CountsBuffer, 0);
+	}
+
+	private static void MeshChunks(CommandEncoder* commandEncoder)
+	{
+		Buffer* CloneBuffer(Buffer* original, ulong size, BufferUsage usage)
+		{
+			Buffer* clone = Graphics.WebGPU.DeviceCreateBuffer(Graphics.Device, new BufferDescriptor {
+				Size             = size,
+				Usage            = BufferUsage.CopyDst | usage,
+				MappedAtCreation = false
+			});
+
+			Graphics.WebGPU.CommandEncoderCopyBufferToBuffer(commandEncoder, original, 0, clone, 0, size);
+			
+			Console.WriteLine($"Cloned a {usage} buffer from 0x{(nint)original:x8} to 0x{(nint)clone:x8} (size {size})");
+			return clone;
+		}
+		
 		ComputePassEncoder* computePass = Graphics.WebGPU.CommandEncoderBeginComputePass(commandEncoder, new ComputePassDescriptor());
 		// Compute pass
 		for (int i = 0; i < TempChunkBuffers.Length; i++)
@@ -496,30 +534,11 @@ public static unsafe class WorldGraphics {
 			Mesher.ResetCounts();
 			Mesher.Mesh(computePass);
 			
-			chunks[i].CountsBuffer = Mesher.CountsBuffer;
-			chunks[i].VertexBuffer = Mesher.VertexOutputBuffer;
-			chunks[i].IndexBuffer = Mesher.IndexOutputBuffer;
+			MeshedChunks[i].VertexBuffer = CloneBuffer(Mesher.VertexOutputBuffer, Mesher.VertexOutputBufferSize, BufferUsage.Vertex);
+			MeshedChunks[i].IndexBuffer = CloneBuffer(Mesher.IndexOutputBuffer, Mesher.IndexOutputBufferSize, BufferUsage.Index);
+			MeshedChunks[i].CountsBuffer = CloneBuffer(Mesher.CountsBuffer, Mesher.CountsBufferSize, BufferUsage.Indirect);
 		}
 		Graphics.WebGPU.ComputePassEncoderEnd(computePass);
-		
-		UpdateProjectionMatrixBuffer();
-		Graphics.WebGPU.RenderPassEncoderSetPipeline(renderPass, _Pipeline);
-		Graphics.WebGPU.RenderPassEncoderSetBindGroup(renderPass, 0, _TextureBindGroup, 0, null);
-		Graphics.WebGPU.RenderPassEncoderSetBindGroup(renderPass, 1, _ProjectionMatrixBindGroup, 0, null);
-		
-		// Render pass
-		foreach (MeshedChunk chunk in chunks)
-		{
-			DrawChunk(renderPass, chunk);
-		}
-	}
-
-	private static void DrawChunk(RenderPassEncoder* renderPass, MeshedChunk chunk)
-	{
-		Graphics.WebGPU.RenderPassEncoderSetVertexBuffer(renderPass, 0, chunk.VertexBuffer, 0, Mesher.VertexOutputBufferSize);
-		Graphics.WebGPU.RenderPassEncoderSetIndexBuffer(renderPass, chunk.IndexBuffer, IndexFormat.Uint32, 0, Mesher.IndexOutputBufferSize);
-		
-		Graphics.WebGPU.RenderPassEncoderDrawIndexedIndirect(renderPass, chunk.CountsBuffer, 0);
 	}
 
 	private static void CreateShader() {
