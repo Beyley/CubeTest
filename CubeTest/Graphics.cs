@@ -105,6 +105,24 @@ public static unsafe class Graphics {
 					WorldGraphics.Camera.Yaw += cameraSpeed * (float)d;
 			}
 			
+			foreach (IGamepad gamepad in Input.Gamepads)
+			{
+				gamepad.Deadzone = new Deadzone(0.15f, DeadzoneMethod.Traditional);
+				Thumbstick leftStick = gamepad.Thumbsticks[0];
+				WorldGraphics.Camera.Position += Vector3.Normalize(Vector3.Cross(WorldGraphics.Camera.Front, WorldGraphics.Camera.Up)) * (float)d * leftStick.X;
+				WorldGraphics.Camera.Position -= WorldGraphics.Camera.Front * (float)d * leftStick.Y;
+				
+				Thumbstick rightStick = gamepad.Thumbsticks[1];
+				WorldGraphics.Camera.Yaw += 150f * rightStick.X * (float)d;
+				WorldGraphics.Camera.Pitch -= 150f * rightStick.Y * (float)d;
+				
+				// Up/down
+				if(gamepad.A().Pressed)
+					WorldGraphics.Camera.Position += WorldGraphics.Camera.Up * (float)d;
+				if(gamepad.B().Pressed)
+					WorldGraphics.Camera.Position -= WorldGraphics.Camera.Up * (float)d;
+			}
+			
 			WorldGraphics.Camera.Pitch = Math.Clamp(WorldGraphics.Camera.Pitch, -89.99f, 89.99f);
 		};
 
