@@ -1,26 +1,22 @@
 using System.Diagnostics.CodeAnalysis;
-using System.Numerics;
 using CubeTest.Abstractions;
+using CubeTest.Game.Input;
 using CubeTest.Ui;
 using CubeTest.World;
 using Silk.NET.Core.Native;
 using Silk.NET.Input;
-using Silk.NET.Input.Glfw;
-using Silk.NET.Input.Sdl;
 using Silk.NET.Maths;
 using Silk.NET.WebGPU;
 using Silk.NET.WebGPU.Extensions.Disposal;
 using Silk.NET.Windowing;
 using Silk.NET.Windowing.Glfw;
 using Silk.NET.Windowing.Sdl;
-using Buffer = Silk.NET.WebGPU.Buffer;
 using Color = Silk.NET.WebGPU.Color;
 
 namespace CubeTest;
 
 public static unsafe class Graphics {
 	public static  IWindow       Window = null!;
-	private static IInputContext Input  = null!;
 
 	// ReSharper disable once InconsistentNaming
 	public static WebGPU WebGPU = null!;
@@ -38,12 +34,11 @@ public static unsafe class Graphics {
 	private static DepthTexture  _DepthTexture;
 
 	public static void Initialize() {
-		//Register GLFW and SDL windowing/input, for AOT scenarios (like WASM or NativeAOT)
+		//Register GLFW and SDL windowing, for AOT scenarios (like WASM or NativeAOT)
 		GlfwWindowing.RegisterPlatform();
 		SdlWindowing.RegisterPlatform();
-
-		GlfwInput.RegisterPlatform();
-		SdlInput.RegisterPlatform();
+		
+		InputHandler.Initialize();
 	}
 
 	public static void Run() {
@@ -57,74 +52,9 @@ public static unsafe class Graphics {
 		Window.Render            += Render;
 		Window.FramebufferResize += FramebufferResize;
 		Window.Closing           += WindowClosing;
-
-		Vector2 last = Vector2.Zero;
+		
 		Window.Update += d => {
-			foreach (IMouse mouse in Input.Mice) {
-				if (mouse.IsButtonPressed(MouseButton.Left))
-				{
-					mouse.Cursor.CursorMode = CursorMode.Raw;
-			
-					WorldGraphics.Camera.Pitch -= (mouse.Position.Y - last.Y) * 0.1f;
-					WorldGraphics.Camera.Yaw   += (mouse.Position.X - last.X) * 0.1f;
-				}
-				else
-				{
-					mouse.Cursor.CursorMode = CursorMode.Normal;
-				}
-				
-				last = mouse.Position;
-			}
-
-			foreach (IKeyboard kb in Input.Keyboards) {
-				if (kb.IsKeyPressed(Key.A))
-					WorldGraphics.Camera.Position -= Vector3.Normalize(Vector3.Cross(WorldGraphics.Camera.Front, WorldGraphics.Camera.Up)) * (float)d;
-				if (kb.IsKeyPressed(Key.D))
-					WorldGraphics.Camera.Position += Vector3.Normalize(Vector3.Cross(WorldGraphics.Camera.Front, WorldGraphics.Camera.Up)) * (float)d;
-
-				if (kb.IsKeyPressed(Key.ShiftLeft))
-					WorldGraphics.Camera.Position -= WorldGraphics.Camera.Up * (float)d;
-				if (kb.IsKeyPressed(Key.Space))
-					WorldGraphics.Camera.Position += WorldGraphics.Camera.Up * (float)d;
-
-				if (kb.IsKeyPressed(Key.W))
-					WorldGraphics.Camera.Position += WorldGraphics.Camera.Front * (float)d;
-				if (kb.IsKeyPressed(Key.S))
-					WorldGraphics.Camera.Position -= WorldGraphics.Camera.Front * (float)d;
-				
-				float cameraSpeed = 150f;
-				if (kb.IsKeyPressed(Key.ControlLeft))
-					cameraSpeed /= 2;
-				
-				if(kb.IsKeyPressed(Key.Up))
-					WorldGraphics.Camera.Pitch += cameraSpeed * (float)d;
-				if(kb.IsKeyPressed(Key.Down))
-					WorldGraphics.Camera.Pitch -= cameraSpeed * (float)d;
-				if(kb.IsKeyPressed(Key.Left))
-					WorldGraphics.Camera.Yaw -= cameraSpeed * (float)d;
-				if(kb.IsKeyPressed(Key.Right))
-					WorldGraphics.Camera.Yaw += cameraSpeed * (float)d;
-			}
-			
-			foreach (IGamepad gamepad in Input.Gamepads)
-			{
-				gamepad.Deadzone = new Deadzone(0.20f, DeadzoneMethod.Traditional);
-				Thumbstick leftStick = gamepad.Thumbsticks[0];
-				WorldGraphics.Camera.Position += Vector3.Normalize(Vector3.Cross(WorldGraphics.Camera.Front, WorldGraphics.Camera.Up)) * (float)d * leftStick.X;
-				WorldGraphics.Camera.Position -= WorldGraphics.Camera.Front * (float)d * leftStick.Y;
-				
-				Thumbstick rightStick = gamepad.Thumbsticks[1];
-				WorldGraphics.Camera.Yaw += 150f * rightStick.X * (float)d;
-				WorldGraphics.Camera.Pitch -= 150f * rightStick.Y * (float)d;
-				
-				// Up/down
-				if(gamepad.A().Pressed)
-					WorldGraphics.Camera.Position += WorldGraphics.Camera.Up * (float)d;
-				if(gamepad.B().Pressed)
-					WorldGraphics.Camera.Position -= WorldGraphics.Camera.Up * (float)d;
-			}
-			
-			WorldGraphics.Camera.Pitch = Math.Clamp(WorldGraphics.Camera.Pitch, -89.99f, 89.99f);
+			InputHandler.ProcessInputs((float)d);
 		};
 
 		Window.Run();
@@ -265,8 +195,8 @@ public static unsafe class Graphics {
 	}
 
 	public static void Load() {
-		Input = Window.CreateInput();
-
+		InputHandler.Load(Window.CreateInput());
+		
 		WebGPU = WebGPU.GetApi();
 
 		//Create our instance
