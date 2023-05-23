@@ -236,12 +236,9 @@ public static unsafe class Mesher {
 		SilkMarshal.Free((nint)computePipelineDescriptor.Compute.EntryPoint);
 	}
 
-	public static void Mesh(CommandEncoder* commandEncoder) {
-		ComputePassEncoder* computePass = Graphics.WebGPU.CommandEncoderBeginComputePass(commandEncoder, new ComputePassDescriptor());
-
+	public static void Mesh(ComputePassEncoder* computePass) {
 		Graphics.WebGPU.ComputePassEncoderSetPipeline(computePass, MeshPipeline);
 		Graphics.WebGPU.ComputePassEncoderSetBindGroup(computePass, 0, MeshBindGroup, 0, null);
 		Graphics.WebGPU.ComputePassEncoderDispatchWorkgroups(computePass, Chunk.CHUNK_SIZE / 4, Chunk.CHUNK_SIZE / 4, Chunk.CHUNK_SIZE / 4);
-		Graphics.WebGPU.ComputePassEncoderEnd(computePass);
 	}
 }

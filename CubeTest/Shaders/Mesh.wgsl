@@ -35,15 +35,15 @@ const chunk_size_cu: i32 = 4096;
 
 const chunk_size_u: u32 = 16u;
 
-// TODO: use these constants when https://github.com/gfx-rs/naga/issues/1829 is closed
-// const chunk_size_sq: u32 = chunk_size * chunk_size;
-// const chunk_size_cu: u32 = chunk_size * chunk_size * chunk_size;
+// TODO: use these varants when https://github.com/gfx-rs/naga/issues/1829 is closed
+// var chunk_size_sq: u32 = chunk_size * chunk_size;
+// var chunk_size_cu: u32 = chunk_size * chunk_size * chunk_size;
 
 fn get_index(x: i32, y: i32, z: i32) -> i32 {
     return chunk_size_sq * y + chunk_size * z + x;
 }
 
-const block_air = 0u;
+const block_air: u32 = 0u;
 
 @compute
 @workgroup_size(4, 4, 4)

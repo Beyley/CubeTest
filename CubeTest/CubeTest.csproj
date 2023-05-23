@@ -10,13 +10,12 @@
 
     <ItemGroup>
         <PackageReference Include="BenchmarkDotNet" Version="0.13.5" />
-        <PackageReference Include="Silk.NET.Input.Glfw" Version="2.17.0" />
-        <PackageReference Include="Silk.NET.Input.Sdl" Version="2.17.0" />
-        <PackageReference Include="Silk.NET.WebGPU" Version="2.17.0" />
-        <PackageReference Include="Silk.NET.WebGPU.Extensions.Disposal" Version="2.17.0" />
-        <PackageReference Include="Silk.NET.WebGPU.Native.WGPU" Version="2.17.0" />
-        <PackageReference Include="Silk.NET.Windowing.Glfw" Version="2.17.0" />
-        <PackageReference Include="Silk.NET.Windowing.Sdl" Version="2.17.0" />
+        <PackageReference Include="Silk.NET.Input.Glfw" Version="2.17.1" />
+        <PackageReference Include="Silk.NET.Input.Sdl" Version="2.17.1" />
+        <PackageReference Include="Silk.NET.WebGPU" Version="2.17.1" />
+        <PackageReference Include="Silk.NET.WebGPU.Extensions.Disposal" Version="2.17.1" />
+        <PackageReference Include="Silk.NET.Windowing.Glfw" Version="2.17.1" />
+        <PackageReference Include="Silk.NET.Windowing.Sdl" Version="2.17.1" />
         <PackageReference Include="SixLabors.ImageSharp" Version="3.0.1" />
     </ItemGroup>
 
@@ -28,7 +27,7 @@
         <EmbeddedResource Include="Models\windows.obj" />
         <EmbeddedResource Include="Textures\T_Atlas.png" />
         <EmbeddedResource Include="Shaders\Mesh.wgsl" />
-        <!-- <EmbeddedResource Include="Models\sponza.obj" /> -->
+         <EmbeddedResource Include="Models\sponza.obj" /> 
     </ItemGroup>
 
 </Project>

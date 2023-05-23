@@ -8,6 +8,7 @@ using CubeTest.ModelLoader;
 using CubeTest.ModelLoader.WavefrontObj;
 using Silk.NET.Core.Native;
 using Silk.NET.WebGPU;
+using Silk.NET.WebGPU.Extensions.WGPU;
 using Buffer = Silk.NET.WebGPU.Buffer;
 using Texture = CubeTest.Abstractions.Texture;
 
@@ -189,13 +190,14 @@ public static unsafe class WorldGraphics {
 
 	private static void CreateSampler() {
 		_Sampler = Graphics.WebGPU.DeviceCreateSampler(Graphics.Device, new SamplerDescriptor {
-			AddressModeU = AddressMode.Repeat,
-			AddressModeV = AddressMode.Repeat,
-			AddressModeW = AddressMode.Repeat,
-			MagFilter    = FilterMode.Nearest,
-			MinFilter    = FilterMode.Nearest,
-			MipmapFilter = MipmapFilterMode.Nearest,
-			Compare      = CompareFunction.Undefined
+			AddressModeU  = AddressMode.Repeat,
+			AddressModeV  = AddressMode.Repeat,
+			AddressModeW  = AddressMode.Repeat,
+			MagFilter     = FilterMode.Nearest,
+			MinFilter     = FilterMode.Nearest,
+			MipmapFilter  = MipmapFilterMode.Nearest,
+			Compare       = CompareFunction.Undefined,
+			MaxAnisotropy = 1
 		});
 	}
 
@@ -458,14 +460,19 @@ public static unsafe class WorldGraphics {
 
 	private static Chunk _Chunk = new Chunk();
 
-	public static void Draw(CommandEncoder* commandEncoder, RenderPassEncoder* renderPass) {
+	public static void Draw(CommandEncoder* commandEncoder, RenderPassEncoder* renderPass, QuerySet* querySet) {
 		//Copy chunk data from temp buffer to blocks buffer
 		Graphics.WebGPU.CommandEncoderCopyBufferToBuffer(commandEncoder, _TempChunkBuffer, 0, Mesher.BlocksBuffer, 0, Mesher.BlocksBufferSize);
 
 		Mesher.ResetCounts();
 
-		//Mesh
-		Mesher.Mesh(commandEncoder);
+		// Graphics.WebGPU.CommandEncoderWriteTimestamp(commandEncoder, querySet, 0);
+		
+		ComputePassEncoder* computePass = Graphics.WebGPU.CommandEncoderBeginComputePass(commandEncoder, new ComputePassDescriptor());
+		Mesher.Mesh(computePass);
+		Graphics.WebGPU.ComputePassEncoderEnd(computePass);
+
+		// Graphics.WebGPU.CommandEncoderWriteTimestamp(commandEncoder, querySet, 1);
 
 		UpdateProjectionMatrixBuffer();
 

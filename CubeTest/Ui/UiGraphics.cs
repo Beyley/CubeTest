@@ -307,7 +307,8 @@ public static unsafe class UiGraphics {
 			MagFilter    = FilterMode.Nearest,
 			MinFilter    = FilterMode.Nearest,
 			MipmapFilter = MipmapFilterMode.Nearest,
-			Compare      = CompareFunction.Undefined
+			Compare      = CompareFunction.Undefined, 
+			MaxAnisotropy = 1
 		});
 	}
 

@@ -13,6 +13,7 @@ using Silk.NET.WebGPU.Extensions.Disposal;
 using Silk.NET.Windowing;
 using Silk.NET.Windowing.Glfw;
 using Silk.NET.Windowing.Sdl;
+using Buffer = Silk.NET.WebGPU.Buffer;
 using Color = Silk.NET.WebGPU.Color;
 
 namespace CubeTest;
@@ -186,7 +187,19 @@ public static unsafe class Graphics {
 			DepthStencilAttachment = &depthStencilAttachment
 		});
 
-		WorldGraphics.Draw(encoder, renderPass);
+		// QuerySet* querySet = WebGPU.DeviceCreateQuerySet(Device, new QuerySetDescriptor {
+			// Type  = QueryType.Timestamp,
+			// Count = 2,
+		// });
+		// Buffer* buf = WebGPU.DeviceCreateBuffer(Device, new BufferDescriptor {
+			// Usage            = BufferUsage.QueryResolve | BufferUsage.CopySrc,
+			// Size             = sizeof(ulong) * 2,
+			// MappedAtCreation = false
+		// });
+		
+		WorldGraphics.Draw(encoder, renderPass, /* querySet */ null);
+
+		// WebGPU.CommandEncoderResolveQuerySet(encoder, querySet, 0, 2, buf, 0);
 
 		//Draws a simple textured quad to the screen
 		// UiGraphics.TestDraw(renderPass);
@@ -205,6 +218,26 @@ public static unsafe class Graphics {
 		//Present the swapchain
 		WebGPU.SwapChainPresent(Swapchain);
 		Window.SwapBuffers();
+
+		// Buffer* readBuffer = WebGPU.DeviceCreateBuffer(Device, new BufferDescriptor {
+		// 	Usage            = BufferUsage.MapRead | BufferUsage.CopyDst,
+		// 	Size             = sizeof(ulong) * 2,
+		// 	MappedAtCreation = false
+		// });
+		// var readbackEncoder = WebGPU.DeviceCreateCommandEncoder(Device, new CommandEncoderDescriptor());
+		// WebGPU.CommandEncoderCopyBufferToBuffer(readbackEncoder, buf, 0, readBuffer, 0, sizeof(ulong) * 2);
+		// var readbackCommands = WebGPU.CommandEncoderFinish(readbackEncoder, new CommandBufferDescriptor());
+		// WebGPU.QueueSubmit(Queue, 1, &readbackCommands);
+		//
+		// WebGPU.BufferMapAsync(readBuffer, MapMode.Read, 0, sizeof(ulong) * 2, new PfnBufferMapCallback((arg0, @void) => {
+		// 	ulong* data = (ulong*)WebGPU.BufferGetConstMappedRange(readBuffer, 0, sizeof(ulong) * 2);
+		// 	
+		// 	Console.WriteLine($"Compute pass took: {(double)(data[1] - data[0]) / 1000000:N8}ms");
+		// 	
+		// 	WebGPU.BufferUnmap(readBuffer);
+		// 	Disposal.Dispose(readBuffer);
+		// 	Disposal.Dispose(buf);
+		// }), null);
 	}
 
 	[return: MaybeNull]
@@ -255,8 +288,15 @@ public static unsafe class Graphics {
 			Console.WriteLine($"Adapter 0x{(nint)Adapter:x8} created!");
 		}), null);
 
+		FeatureName name = FeatureName.TimestampQuery;
+		
 		//Create our device
-		WebGPU.AdapterRequestDevice(Adapter, null, new PfnRequestDeviceCallback((status, device, message, userData) => {
+		WebGPU.AdapterRequestDevice(Adapter, new DeviceDescriptor {
+			RequiredFeaturesCount = 1,
+			RequiredFeatures      = &name,
+			RequiredLimits        = null,
+			DefaultQueue          = default(QueueDescriptor)
+		}, new PfnRequestDeviceCallback((status, device, message, userData) => {
 			if (status != RequestDeviceStatus.Success)
 				throw new Exception($"Unable to create device: {SilkMarshal.PtrToString((nint)message)}");
 
