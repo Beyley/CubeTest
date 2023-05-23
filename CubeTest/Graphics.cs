@@ -107,7 +107,7 @@ public static unsafe class Graphics {
 			
 			foreach (IGamepad gamepad in Input.Gamepads)
 			{
-				gamepad.Deadzone = new Deadzone(0.15f, DeadzoneMethod.Traditional);
+				gamepad.Deadzone = new Deadzone(0.20f, DeadzoneMethod.Traditional);
 				Thumbstick leftStick = gamepad.Thumbsticks[0];
 				WorldGraphics.Camera.Position += Vector3.Normalize(Vector3.Cross(WorldGraphics.Camera.Front, WorldGraphics.Camera.Up)) * (float)d * leftStick.X;
 				WorldGraphics.Camera.Position -= WorldGraphics.Camera.Front * (float)d * leftStick.Y;
