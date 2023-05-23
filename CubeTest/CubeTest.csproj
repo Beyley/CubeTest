@@ -27,7 +27,7 @@
         <EmbeddedResource Include="Models\windows.obj" />
         <EmbeddedResource Include="Textures\T_Atlas.png" />
         <EmbeddedResource Include="Shaders\Mesh.wgsl" />
-         <EmbeddedResource Include="Models\sponza.obj" /> 
+<!--         <EmbeddedResource Include="Models\sponza.obj" /> -->
     </ItemGroup>
 
 </Project>
