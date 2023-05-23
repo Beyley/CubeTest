@@ -11,6 +11,8 @@ public static unsafe class Mesher {
 	public static Buffer* IndexOutputBuffer;
 	public static Buffer* BlocksBuffer;
 	public static Buffer* CountsBuffer;
+	public static Buffer* ChunkXBuffer;
+	public static Buffer* ChunkYBuffer;
 
 	public static ulong VertexOutputBufferSize;
 	public static ulong IndexOutputBufferSize;
@@ -26,6 +28,7 @@ public static unsafe class Mesher {
 		CreateOutputBuffers();
 		CreateBlocksBuffer();
 		CreateCountsBuffer();
+		CreateChunkLocationBuffers();
 
 		CreateBindGroupLayout();
 		CreateBindGroup();
@@ -47,7 +50,7 @@ public static unsafe class Mesher {
 	}
 
 	private static void CreateBindGroupLayout() {
-		const int entryCount = 4;
+		const int entryCount = 6;
 
 		BindGroupLayoutEntry* entries = stackalloc BindGroupLayoutEntry[entryCount];
 		entries[0] = new BindGroupLayoutEntry {
@@ -87,6 +90,24 @@ public static unsafe class Mesher {
 				MinBindingSize   = CountsBufferSize
 			}
 		};
+		entries[4] = new BindGroupLayoutEntry {
+			Binding    = 4,
+			Visibility = ShaderStage.Compute,
+			Buffer = new BufferBindingLayout {
+				Type             = BufferBindingType.ReadOnlyStorage,
+				HasDynamicOffset = false,
+				MinBindingSize   = sizeof(int)
+			}
+		};
+		entries[5] = new BindGroupLayoutEntry {
+			Binding    = 5,
+			Visibility = ShaderStage.Compute,
+			Buffer = new BufferBindingLayout {
+				Type             = BufferBindingType.ReadOnlyStorage,
+				HasDynamicOffset = false,
+				MinBindingSize   = sizeof(int)
+			}
+		};
 
 		MeshBindGroupLayout = Graphics.WebGPU.DeviceCreateBindGroupLayout(Graphics.Device, new BindGroupLayoutDescriptor {
 			EntryCount = entryCount,
@@ -95,7 +116,7 @@ public static unsafe class Mesher {
 	}
 
 	private static void CreateBindGroup() {
-		const int entryCount = 4;
+		const int entryCount = 6;
 
 		BindGroupEntry* entries = stackalloc BindGroupEntry[entryCount];
 
@@ -123,6 +144,18 @@ public static unsafe class Mesher {
 			Offset  = 0,
 			Size    = CountsBufferSize
 		};
+		entries[4] = new BindGroupEntry {
+			Binding = 4,
+			Buffer  = ChunkXBuffer,
+			Offset  = 0,
+			Size    = sizeof(int)
+		};
+		entries[5] = new BindGroupEntry {
+			Binding = 5,
+			Buffer  = ChunkYBuffer,
+			Offset  = 0,
+			Size    = sizeof(int)
+		};
 
 		MeshBindGroup = Graphics.WebGPU.DeviceCreateBindGroup(Graphics.Device, new BindGroupDescriptor {
 			Layout     = MeshBindGroupLayout,
@@ -148,6 +181,25 @@ public static unsafe class Mesher {
 		});
 
 		Console.WriteLine($"Created mesh counts buffer 0x{(nint)CountsBuffer:x}");
+	}
+
+	private static void CreateChunkLocationBuffers()
+	{
+		ChunkXBuffer = Graphics.WebGPU.DeviceCreateBuffer(Graphics.Device, new BufferDescriptor {
+			Usage            = BufferUsage.Storage | BufferUsage.CopyDst,
+			Size             = sizeof(int),
+			MappedAtCreation = false
+		});
+
+		Console.WriteLine($"Created Chunk X buffer 0x{(nint)CountsBuffer:x}");
+		
+		ChunkYBuffer = Graphics.WebGPU.DeviceCreateBuffer(Graphics.Device, new BufferDescriptor {
+			Usage            = BufferUsage.Storage | BufferUsage.CopyDst,
+			Size             = sizeof(int),
+			MappedAtCreation = false
+		});
+
+		Console.WriteLine($"Created Chunk Y buffer 0x{(nint)CountsBuffer:x}");
 	}
 
 	public static void ResetCounts() {

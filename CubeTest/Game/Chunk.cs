@@ -5,6 +5,8 @@ public unsafe struct Chunk {
 	public const int CHUNK_SIZE_SQ = CHUNK_SIZE * CHUNK_SIZE;
 	public const int CHUNK_SIZE_CU = CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE;
 
+	public int ChunkX; 
+	public int ChunkY; 
 	public fixed uint Blocks[CHUNK_SIZE_CU];
 
 	/// <summary>

@@ -29,6 +29,9 @@ struct Counts {
 //atomic counters for the in-use vertices and indices   
 @group(0) @binding(3) var<storage, read_write> counts: Counts;
 
+@group(0) @binding(4) var<storage, read> chunk_x: i32;
+@group(0) @binding(5) var<storage, read> chunk_y: i32;
+
 const chunk_size: i32 = 16;
 const chunk_size_sq: i32 = 256;
 const chunk_size_cu: i32 = 4096;
@@ -68,7 +71,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     }
     
     //The center of the block
-    var pos = vec3<f32>(f32(x) + 0.5, f32(y) + 0.5, f32(z) + 0.5);
+    var pos = vec3<f32>(f32(x) + 0.5, f32(y) + 0.5, f32(z) + 0.5) + vec3<f32>(f32(chunk_x * 16), 0.0, f32(chunk_y * 16));
     // var pos = vec3<f32>(f32(x), f32(y), f32(z));
 
     var xn_visible = false;

@@ -78,10 +78,13 @@ public static unsafe class WorldGraphics {
 
 		Mesher.Initialize();
 
-		for (int i = 0; i < TotalChunkCount; i++)
+		for (int x = 0; x < TotalChunkCount; x++)
 		{
-			InitChunkData(ref Chunks[i], out Buffer* buffer);
-			TempChunkBuffers[i] = buffer;
+			// for (int y = 0; y < RenderDistance; y++)
+			// {
+				InitChunkData(ref Chunks[x], out Buffer* buffer, x, 0);
+				TempChunkBuffers[x] = buffer;
+			// }
 		}
 	}
 
@@ -467,10 +470,13 @@ public static unsafe class WorldGraphics {
 		Console.WriteLine($"Created pipeline 0x{(nuint)_Pipeline:x}");
 	}
 
-	private static void InitChunkData(ref Chunk chunk, out Buffer* buffer) {
+	private static void InitChunkData(ref Chunk chunk, out Buffer* buffer, int x, int y) {
 		Random r = new Random();
 		for (int i = 0; i < Chunk.CHUNK_SIZE_CU; i++)
 			chunk.Blocks[i] = r.Next() % 2 == 0 ? (uint)BlockId.Dirt : (uint)BlockId.Air;
+
+		chunk.ChunkX = x;
+		chunk.ChunkY = y;
 
 		buffer = Graphics.WebGPU.DeviceCreateBuffer(Graphics.Device, new BufferDescriptor {
 			Size             = Mesher.BlocksBufferSize,
@@ -498,15 +504,37 @@ public static unsafe class WorldGraphics {
 		int i = 0;
 		foreach (Buffer* buffer in TempChunkBuffers)
 		{
-			DrawChunk(commandEncoder, renderPass, buffer, i);
+			Chunk chunk = Chunks[i];
+			DrawChunk(commandEncoder, renderPass, buffer, chunk);
 			i++;
 		}
 	}
 
-	private static void DrawChunk(CommandEncoder* commandEncoder, RenderPassEncoder* renderPass, Buffer* buffer, int i)
+	private static void DrawChunk(CommandEncoder* commandEncoder, RenderPassEncoder* renderPass, Buffer* buffer, Chunk chunk)
 	{
 		//Copy chunk data from temp buffer to blocks buffer
 		Graphics.WebGPU.CommandEncoderCopyBufferToBuffer(commandEncoder, buffer, 0, Mesher.BlocksBuffer, 0, Mesher.BlocksBufferSize);
+
+		BufferDescriptor descriptor = new BufferDescriptor
+		{
+			Size = sizeof(int),
+			Usage = BufferUsage.CopySrc | BufferUsage.MapWrite,
+			MappedAtCreation = true
+		};
+		
+		Buffer* tempBuffer = Graphics.WebGPU.DeviceCreateBuffer(Graphics.Device, descriptor);
+		void* map = Graphics.WebGPU.BufferGetMappedRange(tempBuffer, 0, sizeof(int));
+		
+		Unsafe.CopyBlock(map, &chunk.ChunkX, sizeof(int));
+		Graphics.WebGPU.CommandEncoderCopyBufferToBuffer(commandEncoder, tempBuffer, 0, Mesher.ChunkXBuffer, 0, sizeof(int));
+		Graphics.WebGPU.BufferUnmap(tempBuffer);
+		
+		tempBuffer = Graphics.WebGPU.DeviceCreateBuffer(Graphics.Device, descriptor);
+		map = Graphics.WebGPU.BufferGetMappedRange(tempBuffer, 0, sizeof(int));
+		
+		Unsafe.CopyBlock(map, &chunk.ChunkY, sizeof(int));
+		Graphics.WebGPU.CommandEncoderCopyBufferToBuffer(commandEncoder, tempBuffer, 0, Mesher.ChunkYBuffer, 0, sizeof(int));
+		Graphics.WebGPU.BufferUnmap(tempBuffer);
 
 		Mesher.ResetCounts();
 
@@ -516,11 +544,11 @@ public static unsafe class WorldGraphics {
 
 		UpdateProjectionMatrixBuffer();
 		
-		// Create our offset
-		Vector3 positionOffset = new Vector3(i, 0, i);
-
-		// Write the offset
-		Graphics.WebGPU.QueueWriteBuffer(Graphics.Queue, _PositionOffsetBuffer, 0, &positionOffset, (nuint)sizeof(Vector3));
+		// // Create our offset
+		// Vector3 positionOffset = new Vector3(i, 0, i);
+		//
+		// // Write the offset
+		// Graphics.WebGPU.QueueWriteBuffer(Graphics.Queue, _PositionOffsetBuffer, 0, &positionOffset, (nuint)sizeof(Vector3));
 
 		Graphics.WebGPU.RenderPassEncoderSetPipeline(renderPass, _Pipeline);
 		Graphics.WebGPU.RenderPassEncoderSetBindGroup(renderPass, 0, _TextureBindGroup, 0, null);
