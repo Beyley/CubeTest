@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using CubeTest.Abstractions;
@@ -8,7 +7,6 @@ using CubeTest.ModelLoader;
 using CubeTest.ModelLoader.WavefrontObj;
 using Silk.NET.Core.Native;
 using Silk.NET.WebGPU;
-using Silk.NET.WebGPU.Extensions.WGPU;
 using Buffer = Silk.NET.WebGPU.Buffer;
 using Texture = CubeTest.Abstractions.Texture;
 
@@ -27,6 +25,7 @@ public static unsafe class WorldGraphics {
 	private static Buffer*          _ModelMatrixBuffer;
 	private static Buffer*          _CameraInfoBuffer;
 	private static Buffer*          _LightInfoBuffer;
+	private static Buffer*          _PositionOffsetBuffer;
 	private static Model            _Model = null!;
 	private static ulong            _VertexBufferSize;
 	private static Buffer*          _VertexBuffer;
@@ -42,6 +41,7 @@ public static unsafe class WorldGraphics {
 		Graphics.Disposal.Dispose(_ModelMatrixBuffer);
 		Graphics.Disposal.Dispose(_CameraInfoBuffer);
 		Graphics.Disposal.Dispose(_LightInfoBuffer);
+		Graphics.Disposal.Dispose(_PositionOffsetBuffer);
 		Graphics.Disposal.Dispose(_IndexBuffer);
 		Graphics.Disposal.Dispose(_VertexBuffer);
 		Graphics.Disposal.Dispose(_Shader);
@@ -161,6 +161,12 @@ public static unsafe class WorldGraphics {
 
 		//Write the light info
 		Graphics.WebGPU.QueueWriteBuffer(Graphics.Queue, _LightInfoBuffer, 0, &lightInfo, (nuint)sizeof(LightInfo));
+		
+		// Create our offset
+		Vector3 positionOffset = Vector3.Zero;
+
+		// Write the offset
+		Graphics.WebGPU.QueueWriteBuffer(Graphics.Queue, _PositionOffsetBuffer, 0, &positionOffset, (nuint)sizeof(Vector3));
 	}
 
 	private static void CreateMatrixBuffers() {
@@ -191,6 +197,13 @@ public static unsafe class WorldGraphics {
 			Usage            = BufferUsage.Uniform | BufferUsage.CopyDst,
 			MappedAtCreation = false
 		});
+		
+		_PositionOffsetBuffer = Graphics.WebGPU.DeviceCreateBuffer(Graphics.Device, new BufferDescriptor {
+			Size = (ulong)sizeof(Vector3),
+			//We will be using this buffer as a uniform, and we need CopyDst to write to it using QueueWriteBuffer
+			Usage            = BufferUsage.Uniform | BufferUsage.CopyDst,
+			MappedAtCreation = false
+		});
 	}
 
 	private static void CreateSampler() {
@@ -211,7 +224,7 @@ public static unsafe class WorldGraphics {
 	}
 
 	private static void CreateProjectionMatrixBindGroup() {
-		BindGroupLayoutEntry* entries = stackalloc BindGroupLayoutEntry[4];
+		BindGroupLayoutEntry* entries = stackalloc BindGroupLayoutEntry[5];
 
 		entries[0] = new BindGroupLayoutEntry {
 			Binding = 0,
@@ -245,16 +258,24 @@ public static unsafe class WorldGraphics {
 			},
 			Visibility = ShaderStage.Fragment
 		};
+		entries[4] = new BindGroupLayoutEntry {
+			Binding = 4,
+			Buffer = new BufferBindingLayout {
+				Type           = BufferBindingType.Uniform,
+				MinBindingSize = (ulong)sizeof(Vector3)
+			},
+			Visibility = ShaderStage.Vertex
+		};
 
 		_ProjectionMatrixBindGroupLayout = Graphics.WebGPU.DeviceCreateBindGroupLayout
 		(
 			Graphics.Device, new BindGroupLayoutDescriptor {
 				Entries    = entries,
-				EntryCount = 4
+				EntryCount = 5
 			}
 		);
 
-		BindGroupEntry* bindGroupEntries = stackalloc BindGroupEntry[4];
+		BindGroupEntry* bindGroupEntries = stackalloc BindGroupEntry[5];
 
 		bindGroupEntries[0] = new BindGroupEntry {
 			Binding = 0,
@@ -276,12 +297,17 @@ public static unsafe class WorldGraphics {
 			Buffer  = _LightInfoBuffer,
 			Size    = (ulong)sizeof(LightInfo)
 		};
+		bindGroupEntries[4] = new BindGroupEntry {
+			Binding = 4,
+			Buffer  = _PositionOffsetBuffer,
+			Size    = (ulong)sizeof(Vector3)
+		};
 
 		_ProjectionMatrixBindGroup = Graphics.WebGPU.DeviceCreateBindGroup
 		(
 			Graphics.Device, new BindGroupDescriptor {
 				Entries    = bindGroupEntries,
-				EntryCount = 4,
+				EntryCount = 5,
 				Layout     = _ProjectionMatrixBindGroupLayout
 			}
 		);

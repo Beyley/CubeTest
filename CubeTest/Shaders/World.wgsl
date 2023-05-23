@@ -36,6 +36,7 @@ struct LightInfo {
 @group(1) @binding(1) var<uniform> model_matrix: ModelMatrix;
 @group(1) @binding(2) var<uniform> camera_info: CameraInfo;
 @group(1) @binding(3) var<uniform> light_info: LightInfo;
+@group(1) @binding(4) var<uniform> position_offset: vec3<f32>;
 
 @vertex
 fn vs_main(
@@ -46,6 +47,8 @@ fn vs_main(
     var output: VertexOutputs;
 
     output.position = projection_matrix * camera_info.view_matrix * model_matrix.model * vec4<f32>(pos, 1.0);
+    output.position += vec4<f32>(position_offset, 0.0);
+    
     output.tex_coord = tex_coord;
     output.normal = (model_matrix.normal * vec4<f32>(normal, 0.0)).xyz;
 
