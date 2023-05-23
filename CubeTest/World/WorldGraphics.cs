@@ -33,7 +33,7 @@ public static unsafe class WorldGraphics {
 	private static ulong            _IndexBufferSize;
 	private static Buffer*          _IndexBuffer;
 
-	public static Camera Camera = new Camera();
+	public static Camera Camera = new();
 
 	public static void Dispose() {
 		_Texture.Dispose();
@@ -77,7 +77,12 @@ public static unsafe class WorldGraphics {
 		CreateModelIndexBuffer();
 
 		Mesher.Initialize();
-		InitChunkData();
+
+		for (int i = 0; i < TotalChunkCount; i++)
+		{
+			InitChunkData(ref Chunks[i], out Buffer* buffer);
+			TempChunkBuffers[i] = buffer;
+		}
 	}
 
 	private static void CreateModelVertexBuffer() {
@@ -436,43 +441,50 @@ public static unsafe class WorldGraphics {
 		Console.WriteLine($"Created pipeline 0x{(nuint)_Pipeline:x}");
 	}
 
-	private static Buffer* _TempChunkBuffer;
-
-	private static void InitChunkData() {
+	private static void InitChunkData(ref Chunk chunk, out Buffer* buffer) {
 		Random r = new Random();
 		for (int i = 0; i < Chunk.CHUNK_SIZE_CU; i++)
-			_Chunk.Blocks[i] = r.Next() % 2 == 0 ? (uint)BlockId.Dirt : (uint)BlockId.Air;
+			chunk.Blocks[i] = r.Next() % 2 == 0 ? (uint)BlockId.Dirt : (uint)BlockId.Air;
 
-		_TempChunkBuffer = Graphics.WebGPU.DeviceCreateBuffer(Graphics.Device, new BufferDescriptor {
+		buffer = Graphics.WebGPU.DeviceCreateBuffer(Graphics.Device, new BufferDescriptor {
 			Size             = Mesher.BlocksBufferSize,
 			Usage            = BufferUsage.CopySrc | BufferUsage.MapWrite,
 			MappedAtCreation = true
 		});
 
-		void* map = Graphics.WebGPU.BufferGetMappedRange(_TempChunkBuffer, 0, (nuint)Mesher.BlocksBufferSize);
+		void* map = Graphics.WebGPU.BufferGetMappedRange(buffer, 0, (nuint)Mesher.BlocksBufferSize);
 
-		fixed (void* blocks = _Chunk.Blocks) {
+		fixed (void* blocks = chunk.Blocks) {
 			Unsafe.CopyBlock(map, blocks, (uint)Mesher.BlocksBufferSize);
 		}
 
-		Graphics.WebGPU.BufferUnmap(_TempChunkBuffer);
+		Graphics.WebGPU.BufferUnmap(buffer);
 	}
 
-	private static Chunk _Chunk = new Chunk();
+	private const int RenderDistance = 4;
+	private const int TotalChunkCount = RenderDistance * RenderDistance;
+	
+	private static readonly Chunk[] Chunks = new Chunk[TotalChunkCount];
+	private static readonly Buffer*[] TempChunkBuffers = new Buffer*[TotalChunkCount];
 
-	public static void Draw(CommandEncoder* commandEncoder, RenderPassEncoder* renderPass, QuerySet* querySet) {
+	public static void Draw(CommandEncoder* commandEncoder, RenderPassEncoder* renderPass)
+	{
+		foreach (Buffer* buffer in TempChunkBuffers)
+		{
+			DrawChunk(commandEncoder, renderPass, buffer);
+		}
+	}
+
+	private static void DrawChunk(CommandEncoder* commandEncoder, RenderPassEncoder* renderPass, Buffer* buffer)
+	{
 		//Copy chunk data from temp buffer to blocks buffer
-		Graphics.WebGPU.CommandEncoderCopyBufferToBuffer(commandEncoder, _TempChunkBuffer, 0, Mesher.BlocksBuffer, 0, Mesher.BlocksBufferSize);
+		Graphics.WebGPU.CommandEncoderCopyBufferToBuffer(commandEncoder, buffer, 0, Mesher.BlocksBuffer, 0, Mesher.BlocksBufferSize);
 
 		Mesher.ResetCounts();
 
-		// Graphics.WebGPU.CommandEncoderWriteTimestamp(commandEncoder, querySet, 0);
-		
 		ComputePassEncoder* computePass = Graphics.WebGPU.CommandEncoderBeginComputePass(commandEncoder, new ComputePassDescriptor());
 		Mesher.Mesh(computePass);
 		Graphics.WebGPU.ComputePassEncoderEnd(computePass);
-
-		// Graphics.WebGPU.CommandEncoderWriteTimestamp(commandEncoder, querySet, 1);
 
 		UpdateProjectionMatrixBuffer();
 
@@ -482,10 +494,6 @@ public static unsafe class WorldGraphics {
 		Graphics.WebGPU.RenderPassEncoderSetVertexBuffer(renderPass, 0, Mesher.VertexOutputBuffer, 0, Mesher.VertexOutputBufferSize);
 		Graphics.WebGPU.RenderPassEncoderSetIndexBuffer(renderPass, Mesher.IndexOutputBuffer, IndexFormat.Uint32, 0, Mesher.IndexOutputBufferSize);
 		Graphics.WebGPU.RenderPassEncoderDrawIndexedIndirect(renderPass, Mesher.CountsBuffer, 0);
-
-		// Graphics.WebGPU.RenderPassEncoderSetVertexBuffer(renderPass, 0, _VertexBuffer, 0, _VertexBufferSize);
-		// Graphics.WebGPU.RenderPassEncoderSetIndexBuffer(renderPass, _IndexBuffer, IndexFormat.Uint32, 0, _IndexBufferSize);
-		// Graphics.WebGPU.RenderPassEncoderDrawIndexed(renderPass, (uint)_Model.Indices.Length, 1, 0, 0, 0);
 	}
 
 	private static void CreateShader() {

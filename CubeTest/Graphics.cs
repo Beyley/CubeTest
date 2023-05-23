@@ -127,7 +127,7 @@ public static unsafe class Graphics {
 			// MappedAtCreation = false
 		// });
 		
-		WorldGraphics.Draw(encoder, renderPass, /* querySet */ null);
+		WorldGraphics.Draw(encoder, renderPass);
 
 		// WebGPU.CommandEncoderResolveQuerySet(encoder, querySet, 0, 2, buf, 0);
 
