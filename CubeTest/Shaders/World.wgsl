@@ -46,8 +46,7 @@ fn vs_main(
 ) -> VertexOutputs {
     var output: VertexOutputs;
 
-    output.position = projection_matrix * camera_info.view_matrix * model_matrix.model * vec4<f32>(pos, 1.0);
-    output.position += vec4<f32>(position_offset, 0.0);
+    output.position = projection_matrix * camera_info.view_matrix * model_matrix.model * vec4<f32>(pos + position_offset, 1.0);
     
     output.tex_coord = tex_coord;
     output.normal = (model_matrix.normal * vec4<f32>(normal, 0.0)).xyz;

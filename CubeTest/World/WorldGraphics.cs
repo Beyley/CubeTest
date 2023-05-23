@@ -162,11 +162,11 @@ public static unsafe class WorldGraphics {
 		//Write the light info
 		Graphics.WebGPU.QueueWriteBuffer(Graphics.Queue, _LightInfoBuffer, 0, &lightInfo, (nuint)sizeof(LightInfo));
 		
-		// Create our offset
-		Vector3 positionOffset = Vector3.Zero;
-
-		// Write the offset
-		Graphics.WebGPU.QueueWriteBuffer(Graphics.Queue, _PositionOffsetBuffer, 0, &positionOffset, (nuint)sizeof(Vector3));
+		// // Create our offset
+		// Vector3 positionOffset = Vector3.Zero;
+		//
+		// // Write the offset
+		// Graphics.WebGPU.QueueWriteBuffer(Graphics.Queue, _PositionOffsetBuffer, 0, &positionOffset, (nuint)sizeof(Vector3));
 	}
 
 	private static void CreateMatrixBuffers() {
@@ -487,7 +487,7 @@ public static unsafe class WorldGraphics {
 		Graphics.WebGPU.BufferUnmap(buffer);
 	}
 
-	private const int RenderDistance = 4;
+	private const int RenderDistance = 2;
 	private const int TotalChunkCount = RenderDistance * RenderDistance;
 	
 	private static readonly Chunk[] Chunks = new Chunk[TotalChunkCount];
@@ -495,13 +495,15 @@ public static unsafe class WorldGraphics {
 
 	public static void Draw(CommandEncoder* commandEncoder, RenderPassEncoder* renderPass)
 	{
+		int i = 0;
 		foreach (Buffer* buffer in TempChunkBuffers)
 		{
-			DrawChunk(commandEncoder, renderPass, buffer);
+			DrawChunk(commandEncoder, renderPass, buffer, i);
+			i++;
 		}
 	}
 
-	private static void DrawChunk(CommandEncoder* commandEncoder, RenderPassEncoder* renderPass, Buffer* buffer)
+	private static void DrawChunk(CommandEncoder* commandEncoder, RenderPassEncoder* renderPass, Buffer* buffer, int i)
 	{
 		//Copy chunk data from temp buffer to blocks buffer
 		Graphics.WebGPU.CommandEncoderCopyBufferToBuffer(commandEncoder, buffer, 0, Mesher.BlocksBuffer, 0, Mesher.BlocksBufferSize);
@@ -513,6 +515,12 @@ public static unsafe class WorldGraphics {
 		Graphics.WebGPU.ComputePassEncoderEnd(computePass);
 
 		UpdateProjectionMatrixBuffer();
+		
+		// Create our offset
+		Vector3 positionOffset = new Vector3(i, 0, i);
+
+		// Write the offset
+		Graphics.WebGPU.QueueWriteBuffer(Graphics.Queue, _PositionOffsetBuffer, 0, &positionOffset, (nuint)sizeof(Vector3));
 
 		Graphics.WebGPU.RenderPassEncoderSetPipeline(renderPass, _Pipeline);
 		Graphics.WebGPU.RenderPassEncoderSetBindGroup(renderPass, 0, _TextureBindGroup, 0, null);
