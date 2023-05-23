@@ -476,7 +476,11 @@ public static unsafe class WorldGraphics {
 	private static readonly Buffer*[] TempChunkBuffers = new Buffer*[TotalChunkCount];
 	
 	private static bool _HasMeshed = false;
-	private static readonly MeshedChunk[] MeshedChunks = new MeshedChunk[TotalChunkCount]; 
+	// private static readonly MeshedChunk[] MeshedChunks = new MeshedChunk[TotalChunkCount];
+
+	private static Buffer* VertexBuffers;
+	private static Buffer* IndexBuffers;
+	private static Buffer* CountsBuffers;
 
 	public static void Draw(CommandEncoder* commandEncoder, RenderPassEncoder* renderPass)
 	{
@@ -492,35 +496,48 @@ public static unsafe class WorldGraphics {
 		Graphics.WebGPU.RenderPassEncoderSetBindGroup(renderPass, 1, _ProjectionMatrixBindGroup, 0, null);
 		
 		// Render pass
-		foreach (MeshedChunk chunk in MeshedChunks)
+		// foreach (MeshedChunk chunk in MeshedChunks)
+		// {
+		// 	DrawChunk(renderPass, chunk);
+		// }
+		for (ulong i = 0; i < TotalChunkCount; i++)
 		{
-			DrawChunk(renderPass, chunk);
+			DrawChunk(renderPass, i);
 		}
 	}
 
-	private static void DrawChunk(RenderPassEncoder* renderPass, MeshedChunk chunk)
+	private static void DrawChunk(RenderPassEncoder* renderPass, ulong i)
 	{
-		Graphics.WebGPU.RenderPassEncoderSetVertexBuffer(renderPass, 0, chunk.VertexBuffer, 0, Mesher.VertexOutputBufferSize);
-		Graphics.WebGPU.RenderPassEncoderSetIndexBuffer(renderPass, chunk.IndexBuffer, IndexFormat.Uint32, 0, Mesher.IndexOutputBufferSize);
+		Graphics.WebGPU.RenderPassEncoderSetVertexBuffer(renderPass, 0, VertexBuffers, Mesher.VertexOutputBufferSize * i, Mesher.VertexOutputBufferSize);
+		Graphics.WebGPU.RenderPassEncoderSetIndexBuffer(renderPass, IndexBuffers, IndexFormat.Uint32, Mesher.IndexOutputBufferSize * i, Mesher.IndexOutputBufferSize);
 		
-		Graphics.WebGPU.RenderPassEncoderDrawIndexedIndirect(renderPass, chunk.CountsBuffer, 0);
+		Graphics.WebGPU.RenderPassEncoderDrawIndexedIndirect(renderPass, CountsBuffers, Mesher.CountsBufferSize * i);
 	}
 
 	private static void MeshChunks(CommandEncoder* commandEncoder)
 	{
-		Buffer* CloneBuffer(Buffer* original, ulong size, BufferUsage usage)
+		Buffer* CreateBuffer(ulong size, BufferUsage usage)
 		{
-			Buffer* clone = Graphics.WebGPU.DeviceCreateBuffer(Graphics.Device, new BufferDescriptor {
-				Size             = size,
+			Buffer* b = Graphics.WebGPU.DeviceCreateBuffer(Graphics.Device, new BufferDescriptor {
+				Size             = size * TotalChunkCount,
 				Usage            = BufferUsage.CopyDst | usage,
 				MappedAtCreation = false
 			});
 
-			Graphics.WebGPU.CommandEncoderCopyBufferToBuffer(commandEncoder, original, 0, clone, 0, size);
-			
-			Console.WriteLine($"Cloned a {usage} buffer from 0x{(nint)original:x8} to 0x{(nint)clone:x8} (size {size})");
-			return clone;
+			Console.WriteLine($"Created a {usage} buffer at 0x{(nint)b:x8} (size {size})");
+			return b;
 		}
+
+		void CopyBuffer(ulong size, int i, Buffer* src, Buffer* dest)
+		{
+			Console.WriteLine($"Copying {size} bytes from 0x{(nint)src:x8} to 0x{(nint)dest:x8} at offset {size * (ulong)i}");
+			// Graphics.WebGPU.QueueWriteBuffer(Graphics.Queue, dest, 0, 0, (nuint)size);
+			Graphics.WebGPU.CommandEncoderCopyBufferToBuffer(commandEncoder, src, 0, dest, size * (ulong)i, size);
+		}
+
+		VertexBuffers = CreateBuffer(Mesher.VertexOutputBufferSize, BufferUsage.Vertex);
+		IndexBuffers = CreateBuffer(Mesher.IndexOutputBufferSize, BufferUsage.Index);
+		CountsBuffers = CreateBuffer(Mesher.CountsBufferSize, BufferUsage.Indirect);
 		
 		ComputePassEncoder* computePass = Graphics.WebGPU.CommandEncoderBeginComputePass(commandEncoder, new ComputePassDescriptor());
 		// Compute pass
@@ -534,9 +551,9 @@ public static unsafe class WorldGraphics {
 			Mesher.ResetCounts();
 			Mesher.Mesh(computePass);
 			
-			MeshedChunks[i].VertexBuffer = CloneBuffer(Mesher.VertexOutputBuffer, Mesher.VertexOutputBufferSize, BufferUsage.Vertex);
-			MeshedChunks[i].IndexBuffer = CloneBuffer(Mesher.IndexOutputBuffer, Mesher.IndexOutputBufferSize, BufferUsage.Index);
-			MeshedChunks[i].CountsBuffer = CloneBuffer(Mesher.CountsBuffer, Mesher.CountsBufferSize, BufferUsage.Indirect);
+			CopyBuffer(Mesher.VertexOutputBufferSize, i, Mesher.VertexOutputBuffer, VertexBuffers);
+			CopyBuffer(Mesher.IndexOutputBufferSize, i, Mesher.IndexOutputBuffer, IndexBuffers);
+			CopyBuffer(Mesher.CountsBufferSize, i, Mesher.CountsBuffer, CountsBuffers);
 		}
 		Graphics.WebGPU.ComputePassEncoderEnd(computePass);
 	}
