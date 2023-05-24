@@ -7,10 +7,7 @@ using Buffer = Silk.NET.WebGPU.Buffer;
 namespace CubeTest.World;
 
 public static unsafe class Mesher {
-	public static Buffer* VertexOutputBuffer;
-	public static Buffer* IndexOutputBuffer;
 	public static Buffer* BlocksBuffer;
-	public static Buffer* CountsBuffer;
 
 	public static ulong VertexOutputBufferSize;
 	public static ulong IndexOutputBufferSize;
@@ -20,27 +17,32 @@ public static unsafe class Mesher {
 	public static ComputePipeline* MeshPipeline;
 	public static ShaderModule*    MeshShader;
 	public static BindGroupLayout* MeshBindGroupLayout;
-	// public static BindGroup*       MeshBindGroup;
+	public static BindGroup*       MeshBindGroup;
+	
+	public static Buffer* VertexOutputBuffers;
+	public static Buffer* IndexOutputBuffers;
+	public static Buffer* CountsBuffers;
 
-	public static void Initialize() {
-		CreateOutputBuffers();
+	public static void Initialize(ulong chunkCount) {
 		CreateBlocksBuffer();
-		CreateCountsBuffer();
+		
+		CreateOutputBuffers(chunkCount);
 
 		CreateBindGroupLayout();
+		CreateBindGroup();
 
 		CreateShader();
 		CreatePipeline();
 	}
 
 	public static void Dispose() {
-		Graphics.Disposal.Dispose(VertexOutputBuffer);
-		Graphics.Disposal.Dispose(IndexOutputBuffer);
+		Graphics.Disposal.Dispose(VertexOutputBuffers);
+		Graphics.Disposal.Dispose(IndexOutputBuffers);
 		Graphics.Disposal.Dispose(BlocksBuffer);
-		Graphics.Disposal.Dispose(CountsBuffer);
+		Graphics.Disposal.Dispose(CountsBuffers);
 
 		Graphics.Disposal.Dispose(MeshBindGroupLayout);
-		// Graphics.Disposal.Dispose(MeshBindGroup);
+		Graphics.Disposal.Dispose(MeshBindGroup);
 		Graphics.Disposal.Dispose(MeshShader);
 		Graphics.Disposal.Dispose(MeshPipeline);
 	}
@@ -93,26 +95,20 @@ public static unsafe class Mesher {
 		});
 	}
 
-	public static BindGroup* CreateBindGroup(Buffer* vertexOutputBuffer, Buffer* indexOutputBuffer, Buffer* countsBuffer) {
+	private static void CreateBindGroup() {
 		const int entryCount = 4;
-		
-		// countOffset = (countOffset + 255) / 256 * 256; // Round to uppermost multiple of 256 to comply with min_storage_buffer_offset_alignment
-
-		// Console.WriteLine($"Sizes :\tVertex={VertexOutputBufferSize}\tIndex={IndexOutputBufferSize}\tCounts={CountsBufferSize}");
-		// Console.WriteLine($"SizesI:\tVertex={vertexOffset}\tIndex={indexOffset}\tCounts={countOffset}");
-		// Console.WriteLine($"Sizes%:\tVertex={vertexOffset % 256}\tIndex={indexOffset % 256}\tCounts={countOffset % 256}");
 
 		BindGroupEntry* entries = stackalloc BindGroupEntry[entryCount];
 
 		entries[0] = new BindGroupEntry {
 			Binding = 0,
-			Buffer  = vertexOutputBuffer,
+			Buffer  = VertexOutputBuffers,
 			Offset  = 0,
 			Size    = VertexOutputBufferSize
 		};
 		entries[1] = new BindGroupEntry {
 			Binding = 1,
-			Buffer  = indexOutputBuffer,
+			Buffer  = IndexOutputBuffers,
 			Offset  = 0,
 			Size    = IndexOutputBufferSize
 		};
@@ -124,12 +120,12 @@ public static unsafe class Mesher {
 		};
 		entries[3] = new BindGroupEntry {
 			Binding = 3,
-			Buffer  = countsBuffer,
+			Buffer  = CountsBuffers,
 			Offset  = 0,
 			Size    = CountsBufferSize
 		};
 
-		return Graphics.WebGPU.DeviceCreateBindGroup(Graphics.Device, new BindGroupDescriptor {
+		MeshBindGroup = Graphics.WebGPU.DeviceCreateBindGroup(Graphics.Device, new BindGroupDescriptor {
 			Layout     = MeshBindGroupLayout,
 			EntryCount = entryCount,
 			Entries    = entries
@@ -145,17 +141,7 @@ public static unsafe class Mesher {
 		public uint VertexCount;
 	}
 
-	private static void CreateCountsBuffer() {
-		CountsBuffer = Graphics.WebGPU.DeviceCreateBuffer(Graphics.Device, new BufferDescriptor {
-			Usage            = BufferUsage.Storage | BufferUsage.CopyDst | BufferUsage.Indirect | BufferUsage.CopySrc,
-			Size             = CountsBufferSize = Math.Max((ulong)sizeof(AtomicCounts), 256),
-			MappedAtCreation = false
-		});
-
-		Console.WriteLine($"Created mesh counts buffer 0x{(nint)CountsBuffer:x}");
-	}
-
-	public static void ResetCounts() {
+	public static void ResetCounts(ulong chunkIndex) {
 		AtomicCounts atomicCounts = new AtomicCounts {
 			VertexCount   = 0,
 			InstanceCount = 1, //this is 1, as we only draw 1 instance
@@ -165,7 +151,7 @@ public static unsafe class Mesher {
 			IndexCount    = 0
 		};
 
-		Graphics.WebGPU.QueueWriteBuffer(Graphics.Queue, CountsBuffer, 0, &atomicCounts, (nuint)sizeof(AtomicCounts));
+		Graphics.WebGPU.QueueWriteBuffer(Graphics.Queue, CountsBuffers, CountsBufferSize * chunkIndex, &atomicCounts, (nuint)sizeof(AtomicCounts));
 	}
 
 	private static void CreateBlocksBuffer() {
@@ -178,21 +164,35 @@ public static unsafe class Mesher {
 		Console.WriteLine($"Created mesh blocks buffer 0x{(nint)BlocksBuffer:x}");
 	}
 
-	private static void CreateOutputBuffers() {
-		VertexOutputBuffer = Graphics.WebGPU.DeviceCreateBuffer(Graphics.Device, new BufferDescriptor {
+	private static void CreateOutputBuffers(ulong chunkCount)
+	{
+		VertexOutputBufferSize = (ulong)(sizeof(WorldVertex) * Chunk.CHUNK_SIZE_CU * 6 * 4); //size of one vertex * blocks in chunk * 6 faces * 4 vertices per face
+		IndexOutputBufferSize = sizeof(uint) * Chunk.CHUNK_SIZE_CU * 6 * 6; //size of one index * blocks in chunk * 6 faces * 6 indices per face
+		CountsBufferSize = Math.Max((ulong)sizeof(AtomicCounts), 256);
+		
+		VertexOutputBuffers = Graphics.WebGPU.DeviceCreateBuffer(Graphics.Device, new BufferDescriptor {
 			Label            = null,
 			Usage            = BufferUsage.Storage | BufferUsage.Vertex | BufferUsage.CopySrc,
-			Size             = VertexOutputBufferSize = (ulong)(sizeof(WorldVertex) * Chunk.CHUNK_SIZE_CU * 6 * 4), //size of one vertex * blocks in chunk * 6 faces * 4 vertices per face
+			Size             = VertexOutputBufferSize * chunkCount,
 			MappedAtCreation = false
 		});
-		IndexOutputBuffer = Graphics.WebGPU.DeviceCreateBuffer(Graphics.Device, new BufferDescriptor {
+		Console.WriteLine($"Created mesh vertex output buffers 0x{(nint)VertexOutputBuffers:x}");
+		
+		IndexOutputBuffers = Graphics.WebGPU.DeviceCreateBuffer(Graphics.Device, new BufferDescriptor {
 			Label            = null,
 			Usage            = BufferUsage.Storage | BufferUsage.Index | BufferUsage.CopySrc,
-			Size             = IndexOutputBufferSize = sizeof(uint) * Chunk.CHUNK_SIZE_CU * 6 * 6, //size of one index * blocks in chunk * 6 faces * 6 indices per face
+			Size             = IndexOutputBufferSize * chunkCount,
 			MappedAtCreation = false
 		});
+		Console.WriteLine($"Created mesh index output buffers 0x{(nint)IndexOutputBuffers:x}");
+		
+		CountsBuffers = Graphics.WebGPU.DeviceCreateBuffer(Graphics.Device, new BufferDescriptor {
+			Usage            = BufferUsage.Storage | BufferUsage.CopyDst | BufferUsage.Indirect | BufferUsage.CopySrc,
+			Size             = CountsBufferSize * chunkCount,
+			MappedAtCreation = false
+		});
+		Console.WriteLine($"Created mesh counts buffer 0x{(nint)CountsBuffers:x}");
 
-		Console.WriteLine($"Created mesh ouptut buffers 0x{(nint)VertexOutputBuffer:x} and 0x{(nint)IndexOutputBuffer:x}");
 	}
 
 	private static void CreateShader() {
@@ -241,7 +241,7 @@ public static unsafe class Mesher {
 		SilkMarshal.Free((nint)computePipelineDescriptor.Compute.EntryPoint);
 	}
 
-	public static void Mesh(ComputePassEncoder* computePass, uint offsetIndex, BindGroup* bindGroup)
+	public static void Mesh(ComputePassEncoder* computePass, uint offsetIndex)
 	{
 		const int offsetCount = 3;
 		uint* offsets = stackalloc uint[offsetCount];
@@ -250,7 +250,7 @@ public static unsafe class Mesher {
 		offsets[2] = (uint)CountsBufferSize * offsetIndex;
 
 		Graphics.WebGPU.ComputePassEncoderSetPipeline(computePass, MeshPipeline);
-		Graphics.WebGPU.ComputePassEncoderSetBindGroup(computePass, 0, bindGroup, offsetCount, offsets);
+		Graphics.WebGPU.ComputePassEncoderSetBindGroup(computePass, 0, MeshBindGroup, offsetCount, offsets);
 		Graphics.WebGPU.ComputePassEncoderDispatchWorkgroups(computePass, Chunk.CHUNK_SIZE / 4, Chunk.CHUNK_SIZE / 4, Chunk.CHUNK_SIZE / 4);
 	}
 }
