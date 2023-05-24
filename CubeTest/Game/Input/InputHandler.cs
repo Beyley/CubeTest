@@ -33,7 +33,7 @@ public static class InputHandler
         HandleAllInputs(ref inputs);
 
         if (inputs.Move.X != 0 || inputs.Move.Y != 0)
-            inputs.Move = Vector2.Normalize(inputs.Move);
+            inputs.Move = Vector2.Clamp(inputs.Move, -Vector2.One, Vector2.One);
 
         WorldGraphics.Camera.Yaw += inputs.Turn.X;
         WorldGraphics.Camera.Pitch += inputs.Turn.Y;
