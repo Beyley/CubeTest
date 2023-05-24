@@ -520,7 +520,7 @@ public static unsafe class WorldGraphics {
 		{
 			Buffer* b = Graphics.WebGPU.DeviceCreateBuffer(Graphics.Device, new BufferDescriptor {
 				Size             = size * TotalChunkCount,
-				Usage            = BufferUsage.CopyDst | usage,
+				Usage            = BufferUsage.Storage | usage,
 				MappedAtCreation = false
 			});
 
@@ -528,12 +528,12 @@ public static unsafe class WorldGraphics {
 			return b;
 		}
 
-		void CopyBuffer(ulong size, int i, Buffer* src, Buffer* dest)
-		{
-			Console.WriteLine($"Copying {size} bytes from 0x{(nint)src:x8} to 0x{(nint)dest:x8} at offset {size * (ulong)i}");
-			// Graphics.WebGPU.QueueWriteBuffer(Graphics.Queue, dest, 0, 0, (nuint)size);
-			Graphics.WebGPU.CommandEncoderCopyBufferToBuffer(commandEncoder, src, 0, dest, size * (ulong)i, size);
-		}
+		// void CopyBuffer(ulong size, int offset, Buffer* src, Buffer* dest)
+		// {
+		// 	ulong offsetSize = size * (ulong)offset;
+		// 	Console.WriteLine($"Copying {size} bytes from 0x{(nint)src:x8} to 0x{(nint)dest:x8} at offset {offsetSize}");
+		// 	Graphics.WebGPU.CommandEncoderCopyBufferToBuffer(commandEncoder, src, 0, dest, offsetSize, size);
+		// }
 
 		VertexBuffers = CreateBuffer(Mesher.VertexOutputBufferSize, BufferUsage.Vertex);
 		IndexBuffers = CreateBuffer(Mesher.IndexOutputBufferSize, BufferUsage.Index);
@@ -549,11 +549,7 @@ public static unsafe class WorldGraphics {
 				Mesher.BlocksBufferSize);
 
 			Mesher.ResetCounts();
-			Mesher.Mesh(computePass);
-			
-			CopyBuffer(Mesher.VertexOutputBufferSize, i, Mesher.VertexOutputBuffer, VertexBuffers);
-			CopyBuffer(Mesher.IndexOutputBufferSize, i, Mesher.IndexOutputBuffer, IndexBuffers);
-			CopyBuffer(Mesher.CountsBufferSize, i, Mesher.CountsBuffer, CountsBuffers);
+			Mesher.Mesh(computePass, (ulong)i, VertexBuffers, IndexBuffers, CountsBuffers);
 		}
 		Graphics.WebGPU.ComputePassEncoderEnd(computePass);
 	}
