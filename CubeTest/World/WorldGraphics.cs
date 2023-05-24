@@ -31,7 +31,10 @@ public static unsafe class WorldGraphics {
 	private static ulong            _IndexBufferSize;
 	private static Buffer*          _IndexBuffer;
 
-	public static Camera Camera = new();
+	public static Camera Camera = new()
+	{
+		Position = new Vector3(RenderDistance * 1.5f, 6, RenderDistance * 1.5f)
+	};
 
 	public static void Dispose() {
 		_Texture.Dispose();
