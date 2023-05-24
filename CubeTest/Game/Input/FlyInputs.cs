@@ -2,7 +2,7 @@ using System.Numerics;
 
 namespace CubeTest.Game.Input;
 
-public struct Inputs
+public struct FlyInputs
 {
     /// <summary>
     /// 0 to 1, controls where the camera should move to

@@ -32,13 +32,16 @@ public static unsafe class Graphics {
 	public static  TextureFormat SwapchainFormat;
 	public static  SwapChain*    Swapchain;
 	private static DepthTexture  _DepthTexture;
+	
+	private static InputHandler<FlyInputs> _InputHandler = null!;
 
 	public static void Initialize() {
 		//Register GLFW and SDL windowing, for AOT scenarios (like WASM or NativeAOT)
 		GlfwWindowing.RegisterPlatform();
 		SdlWindowing.RegisterPlatform();
-		
-		InputHandler.Initialize();
+
+		_InputHandler = new FlyInputHandler();
+		_InputHandler.Initialize();
 	}
 
 	public static void Run() {
@@ -54,7 +57,7 @@ public static unsafe class Graphics {
 		Window.Closing           += WindowClosing;
 		
 		Window.Update += d => {
-			InputHandler.ProcessInputs((float)d);
+			_InputHandler.Update((float)d);
 		};
 
 		Window.Run();
@@ -117,19 +120,7 @@ public static unsafe class Graphics {
 			DepthStencilAttachment = &depthStencilAttachment
 		});
 
-		// QuerySet* querySet = WebGPU.DeviceCreateQuerySet(Device, new QuerySetDescriptor {
-			// Type  = QueryType.Timestamp,
-			// Count = 2,
-		// });
-		// Buffer* buf = WebGPU.DeviceCreateBuffer(Device, new BufferDescriptor {
-			// Usage            = BufferUsage.QueryResolve | BufferUsage.CopySrc,
-			// Size             = sizeof(ulong) * 2,
-			// MappedAtCreation = false
-		// });
-		
 		WorldGraphics.Draw(encoder, renderPass);
-
-		// WebGPU.CommandEncoderResolveQuerySet(encoder, querySet, 0, 2, buf, 0);
 
 		//Draws a simple textured quad to the screen
 		// UiGraphics.TestDraw(renderPass);
@@ -148,26 +139,6 @@ public static unsafe class Graphics {
 		//Present the swapchain
 		WebGPU.SwapChainPresent(Swapchain);
 		Window.SwapBuffers();
-
-		// Buffer* readBuffer = WebGPU.DeviceCreateBuffer(Device, new BufferDescriptor {
-		// 	Usage            = BufferUsage.MapRead | BufferUsage.CopyDst,
-		// 	Size             = sizeof(ulong) * 2,
-		// 	MappedAtCreation = false
-		// });
-		// var readbackEncoder = WebGPU.DeviceCreateCommandEncoder(Device, new CommandEncoderDescriptor());
-		// WebGPU.CommandEncoderCopyBufferToBuffer(readbackEncoder, buf, 0, readBuffer, 0, sizeof(ulong) * 2);
-		// var readbackCommands = WebGPU.CommandEncoderFinish(readbackEncoder, new CommandBufferDescriptor());
-		// WebGPU.QueueSubmit(Queue, 1, &readbackCommands);
-		//
-		// WebGPU.BufferMapAsync(readBuffer, MapMode.Read, 0, sizeof(ulong) * 2, new PfnBufferMapCallback((arg0, @void) => {
-		// 	ulong* data = (ulong*)WebGPU.BufferGetConstMappedRange(readBuffer, 0, sizeof(ulong) * 2);
-		// 	
-		// 	Console.WriteLine($"Compute pass took: {(double)(data[1] - data[0]) / 1000000:N8}ms");
-		// 	
-		// 	WebGPU.BufferUnmap(readBuffer);
-		// 	Disposal.Dispose(readBuffer);
-		// 	Disposal.Dispose(buf);
-		// }), null);
 	}
 
 	[return: MaybeNull]
@@ -195,7 +166,7 @@ public static unsafe class Graphics {
 	}
 
 	public static void Load() {
-		InputHandler.Load(Window.CreateInput());
+		_InputHandler.Load(Window.CreateInput());
 		
 		WebGPU = WebGPU.GetApi();
 
