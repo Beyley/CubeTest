@@ -54,12 +54,24 @@ public static class InputHandler
 
     private static void HandleMouseInputs(IMouse mouse, ref Inputs inputs)
     {
-        if (mouse.IsButtonPressed(MouseButton.Left))
+        if (mouse.IsButtonPressed(MouseButton.Left) || mouse.IsButtonPressed(MouseButton.Right))
         {
             mouse.Cursor.CursorMode = CursorMode.Raw;
 
-            inputs.Turn.X += (mouse.Position.X - _LastMousePosition.X) * 0.1f;
-            inputs.Turn.Y -= (mouse.Position.Y - _LastMousePosition.Y) * 0.1f;
+            bool isTurn = mouse.IsButtonPressed(MouseButton.Left);
+            Vector2 axis = isTurn ? inputs.Turn : inputs.Move;
+            float x = (mouse.Position.X - _LastMousePosition.X) * 0.1f;
+            float y = (mouse.Position.Y - _LastMousePosition.Y) * 0.1f;
+
+            axis.X += x;
+            axis.Y -= y;
+
+            if (isTurn) inputs.Turn = axis;
+            else // if panning
+            {
+                inputs.Move.X = axis.X;
+                inputs.UpDown = axis.Y / 6;
+            }
         }
         else
         {
