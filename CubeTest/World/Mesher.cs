@@ -55,7 +55,7 @@ public static unsafe class Mesher {
 			Buffer = new BufferBindingLayout {
 				NextInChain      = null,
 				Type             = BufferBindingType.Storage,
-				HasDynamicOffset = false,
+				HasDynamicOffset = true,
 				MinBindingSize   = VertexOutputBufferSize
 			}
 		};
@@ -64,7 +64,7 @@ public static unsafe class Mesher {
 			Visibility = ShaderStage.Compute,
 			Buffer = new BufferBindingLayout {
 				Type             = BufferBindingType.Storage,
-				HasDynamicOffset = false,
+				HasDynamicOffset = true,
 				MinBindingSize   = IndexOutputBufferSize
 			}
 		};
@@ -82,7 +82,7 @@ public static unsafe class Mesher {
 			Visibility = ShaderStage.Compute,
 			Buffer = new BufferBindingLayout {
 				Type             = BufferBindingType.Storage,
-				HasDynamicOffset = false,
+				HasDynamicOffset = true,
 				MinBindingSize   = CountsBufferSize
 			}
 		};
@@ -93,31 +93,27 @@ public static unsafe class Mesher {
 		});
 	}
 
-	private static BindGroup* CreateBindGroup(ulong offsetIndex, Buffer* vertexOutputBuffer, Buffer* indexOutputBuffer, Buffer* countsBuffer) {
+	public static BindGroup* CreateBindGroup(Buffer* vertexOutputBuffer, Buffer* indexOutputBuffer, Buffer* countsBuffer) {
 		const int entryCount = 4;
+		
+		// countOffset = (countOffset + 255) / 256 * 256; // Round to uppermost multiple of 256 to comply with min_storage_buffer_offset_alignment
 
-		ulong vertexOffset = VertexOutputBufferSize * offsetIndex;
-		ulong indexOffset = IndexOutputBufferSize * offsetIndex;
-		ulong countOffset = CountsBufferSize * offsetIndex;
-
-		countOffset = (countOffset + 255) / 256 * 256; // Round to uppermost multiple of 256 to comply with min_storage_buffer_offset_alignment
-
-		Console.WriteLine($"Sizes :\tVertex={VertexOutputBufferSize}\tIndex={IndexOutputBufferSize}\tCounts={CountsBufferSize}");
-		Console.WriteLine($"SizesI:\tVertex={vertexOffset}\tIndex={indexOffset}\tCounts={countOffset}");
-		Console.WriteLine($"Sizes%:\tVertex={vertexOffset % 256}\tIndex={indexOffset % 256}\tCounts={countOffset % 256}");
+		// Console.WriteLine($"Sizes :\tVertex={VertexOutputBufferSize}\tIndex={IndexOutputBufferSize}\tCounts={CountsBufferSize}");
+		// Console.WriteLine($"SizesI:\tVertex={vertexOffset}\tIndex={indexOffset}\tCounts={countOffset}");
+		// Console.WriteLine($"Sizes%:\tVertex={vertexOffset % 256}\tIndex={indexOffset % 256}\tCounts={countOffset % 256}");
 
 		BindGroupEntry* entries = stackalloc BindGroupEntry[entryCount];
 
 		entries[0] = new BindGroupEntry {
 			Binding = 0,
 			Buffer  = vertexOutputBuffer,
-			Offset  = vertexOffset,
+			Offset  = 0,
 			Size    = VertexOutputBufferSize
 		};
 		entries[1] = new BindGroupEntry {
 			Binding = 1,
 			Buffer  = indexOutputBuffer,
-			Offset  = indexOffset,
+			Offset  = 0,
 			Size    = IndexOutputBufferSize
 		};
 		entries[2] = new BindGroupEntry {
@@ -129,7 +125,7 @@ public static unsafe class Mesher {
 		entries[3] = new BindGroupEntry {
 			Binding = 3,
 			Buffer  = countsBuffer,
-			Offset  = countOffset,
+			Offset  = 0,
 			Size    = CountsBufferSize
 		};
 
@@ -152,8 +148,7 @@ public static unsafe class Mesher {
 	private static void CreateCountsBuffer() {
 		CountsBuffer = Graphics.WebGPU.DeviceCreateBuffer(Graphics.Device, new BufferDescriptor {
 			Usage            = BufferUsage.Storage | BufferUsage.CopyDst | BufferUsage.Indirect | BufferUsage.CopySrc,
-			// Size             = CountsBufferSize = (ulong)sizeof(AtomicCounts),
-			Size             = CountsBufferSize = 256,
+			Size             = CountsBufferSize = Math.Max((ulong)sizeof(AtomicCounts), 256),
 			MappedAtCreation = false
 		});
 
@@ -246,14 +241,16 @@ public static unsafe class Mesher {
 		SilkMarshal.Free((nint)computePipelineDescriptor.Compute.EntryPoint);
 	}
 
-	public static void Mesh(ComputePassEncoder* computePass, ulong offsetIndex, Buffer* vertexOutputBuffer, Buffer* indexOutputBuffer, Buffer* countsBuffer)
+	public static void Mesh(ComputePassEncoder* computePass, uint offsetIndex, BindGroup* bindGroup)
 	{
-		Console.WriteLine("BIND TIME");
-		BindGroup* bindGroup = CreateBindGroup(offsetIndex, vertexOutputBuffer, indexOutputBuffer, countsBuffer);
-		Console.WriteLine("MESH TIME");
-		
+		const int offsetCount = 3;
+		uint* offsets = stackalloc uint[offsetCount];
+		offsets[0] = (uint)VertexOutputBufferSize * offsetIndex;
+		offsets[1] = (uint)IndexOutputBufferSize * offsetIndex;
+		offsets[2] = (uint)CountsBufferSize * offsetIndex;
+
 		Graphics.WebGPU.ComputePassEncoderSetPipeline(computePass, MeshPipeline);
-		Graphics.WebGPU.ComputePassEncoderSetBindGroup(computePass, 0, bindGroup, 0, null);
+		Graphics.WebGPU.ComputePassEncoderSetBindGroup(computePass, 0, bindGroup, offsetCount, offsets);
 		Graphics.WebGPU.ComputePassEncoderDispatchWorkgroups(computePass, Chunk.CHUNK_SIZE / 4, Chunk.CHUNK_SIZE / 4, Chunk.CHUNK_SIZE / 4);
 	}
 }

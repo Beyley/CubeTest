@@ -469,7 +469,7 @@ public static unsafe class WorldGraphics {
 		Graphics.WebGPU.BufferUnmap(buffer);
 	}
 
-	private const int RenderDistance = 2;
+	private const int RenderDistance = 8;
 	private const int TotalChunkCount = RenderDistance * RenderDistance;
 	
 	private static readonly Chunk[] Chunks = new Chunk[TotalChunkCount];
@@ -539,19 +539,19 @@ public static unsafe class WorldGraphics {
 		IndexBuffers = CreateBuffer(Mesher.IndexOutputBufferSize, BufferUsage.Index);
 		CountsBuffers = CreateBuffer(Mesher.CountsBufferSize, BufferUsage.Indirect);
 		
-		ComputePassEncoder* computePass = Graphics.WebGPU.CommandEncoderBeginComputePass(commandEncoder, new ComputePassDescriptor());
+		BindGroup* bindGroup = Mesher.CreateBindGroup(VertexBuffers, IndexBuffers, CountsBuffers);
 		// Compute pass
 		for (int i = 0; i < TempChunkBuffers.Length; i++)
 		{
+			ComputePassEncoder* computePass = Graphics.WebGPU.CommandEncoderBeginComputePass(commandEncoder, new ComputePassDescriptor());
 			Buffer* buffer = TempChunkBuffers[i];
 			//Copy chunk data from temp buffer to blocks buffer
-			Graphics.WebGPU.CommandEncoderCopyBufferToBuffer(commandEncoder, buffer, 0, Mesher.BlocksBuffer, 0,
-				Mesher.BlocksBufferSize);
+			Graphics.WebGPU.CommandEncoderCopyBufferToBuffer(commandEncoder, buffer, 0, Mesher.BlocksBuffer, 0, Mesher.BlocksBufferSize);
 
 			Mesher.ResetCounts();
-			Mesher.Mesh(computePass, (ulong)i, VertexBuffers, IndexBuffers, CountsBuffers);
+			Mesher.Mesh(computePass, (uint)i, bindGroup);
+			Graphics.WebGPU.ComputePassEncoderEnd(computePass);
 		}
-		Graphics.WebGPU.ComputePassEncoderEnd(computePass);
 	}
 
 	private static void CreateShader() {
