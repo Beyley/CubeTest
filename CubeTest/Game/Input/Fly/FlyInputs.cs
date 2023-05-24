@@ -1,6 +1,6 @@
 using System.Numerics;
 
-namespace CubeTest.Game.Input;
+namespace CubeTest.Game.Input.Fly;
 
 public struct FlyInputs
 {

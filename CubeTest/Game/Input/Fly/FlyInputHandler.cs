@@ -2,7 +2,7 @@ using System.Numerics;
 using CubeTest.World;
 using Silk.NET.Input;
 
-namespace CubeTest.Game.Input;
+namespace CubeTest.Game.Input.Fly;
 
 public class FlyInputHandler : InputHandler<FlyInputs>
 {
@@ -82,12 +82,9 @@ public class FlyInputHandler : InputHandler<FlyInputs>
     protected override void HandleGamepadInputs(IGamepad gamepad, ref FlyInputs inputs)
     {
         gamepad.Deadzone = new Deadzone(0.20f, DeadzoneMethod.Traditional);
-        
-        Thumbstick leftStick = gamepad.Thumbsticks[0];
-        inputs.Move += new Vector2(leftStick.X, -leftStick.Y);
 
-        Thumbstick rightStick = gamepad.Thumbsticks[1];
-        inputs.Turn += new Vector2(rightStick.X, -rightStick.Y) * 2;
+        inputs.Move += HandleGamepadMoveInputs(gamepad);
+        inputs.Turn += HandleGamepadLookInputs(gamepad);
 
         // Up/down
         if (gamepad.A().Pressed)

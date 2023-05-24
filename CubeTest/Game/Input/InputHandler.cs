@@ -51,6 +51,27 @@ public abstract class InputHandler<TInputs> where TInputs : struct
         foreach (IGamepad gamepad in _Input.Gamepads) HandleGamepadInputs(gamepad, ref inputs);
     }
 
+    protected Vector2 HandleMouseLookInputs(IMouse mouse)
+    {
+        mouse.Cursor.CursorMode = CursorMode.Raw;
+        
+        float x = (mouse.Position.X - _LastMousePosition.X) * 0.1f;
+        float y = (mouse.Position.Y - _LastMousePosition.Y) * 0.1f;
+        return new Vector2(x, -y);
+    }
+    
+    protected Vector2 HandleGamepadLookInputs(IGamepad gamepad)
+    {
+        Thumbstick rightStick = gamepad.Thumbsticks[1];
+        return new Vector2(rightStick.X, -rightStick.Y) * 2;
+    }
+
+    protected Vector2 HandleGamepadMoveInputs(IGamepad gamepad)
+    {
+        Thumbstick leftStick = gamepad.Thumbsticks[0];
+        return new Vector2(leftStick.X, -leftStick.Y);
+    }
+
     protected abstract void HandleMouseInputs(IMouse mouse, ref TInputs inputs);
 
     protected abstract void HandleKeyboardInputs(IKeyboard kb, ref TInputs inputs);

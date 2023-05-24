@@ -1,6 +1,10 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Numerics;
 using CubeTest.Abstractions;
+using CubeTest.Game;
 using CubeTest.Game.Input;
+using CubeTest.Game.Input.Fly;
+using CubeTest.Game.Input.Player;
 using CubeTest.Ui;
 using CubeTest.World;
 using Silk.NET.Core.Native;
@@ -33,14 +37,16 @@ public static unsafe class Graphics {
 	public static  SwapChain*    Swapchain;
 	private static DepthTexture  _DepthTexture;
 	
-	private static InputHandler<FlyInputs> _InputHandler = null!;
+	private static Player _Player;
+	
+	private static PlayerInputHandler _InputHandler = null!;
 
 	public static void Initialize() {
 		//Register GLFW and SDL windowing, for AOT scenarios (like WASM or NativeAOT)
 		GlfwWindowing.RegisterPlatform();
 		SdlWindowing.RegisterPlatform();
-
-		_InputHandler = new FlyInputHandler();
+		
+		_InputHandler = new PlayerInputHandler();
 		_InputHandler.Initialize();
 	}
 
@@ -57,7 +63,11 @@ public static unsafe class Graphics {
 		Window.Closing           += WindowClosing;
 		
 		Window.Update += d => {
-			_InputHandler.Update((float)d);
+			// _InputHandler.Update((float)d);
+			_Player.Update((float)d);
+			WorldGraphics.Camera.Position = _Player.Position + new Vector3(0, 0.4f, 0);
+			WorldGraphics.Camera.Pitch = _Player.Pitch;
+			WorldGraphics.Camera.Yaw = _Player.Yaw;
 		};
 
 		Window.Run();
@@ -219,6 +229,11 @@ public static unsafe class Graphics {
 
 		UiGraphics.Initalize();
 		WorldGraphics.Initialize();
+
+		_Player = new Player(_InputHandler)
+		{
+			Position = WorldGraphics.Camera.Position
+		};
 	}
 
 	private static void CreateSwapchain() {
