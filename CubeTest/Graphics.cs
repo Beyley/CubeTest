@@ -1,15 +1,12 @@
-using System.Diagnostics.CodeAnalysis;
 using CubeTest.Abstractions;
 using CubeTest.Game.Input;
 using CubeTest.Ui;
 using CubeTest.World;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Silk.NET.Core.Native;
 using Silk.NET.Input;
 using Silk.NET.Maths;
 using Silk.NET.WebGPU;
 using Silk.NET.WebGPU.Extensions.Disposal;
-using Silk.NET.WebGPU.Extensions.WGPU;
 using Silk.NET.Windowing;
 using Silk.NET.Windowing.Glfw;
 using Silk.NET.Windowing.Sdl;
@@ -18,7 +15,7 @@ using Color = Silk.NET.WebGPU.Color;
 namespace CubeTest;
 
 public static unsafe class Graphics {
-	public static  IWindow       Window = null!;
+	public static IWindow Window = null!;
 
 	// ReSharper disable once InconsistentNaming
 	public static WebGPU WebGPU = null!;
@@ -30,10 +27,10 @@ public static unsafe class Graphics {
 	public static Device*   Device;
 	public static Queue*    Queue;
 
-	public static  Surface* Surface;
-	public static SurfaceCapabilities SurfaceCapabilities;
-	public static SurfaceConfiguration SurfaceConfiguration;
-	private static DepthTexture _DepthTexture;
+	public static  Surface*             Surface;
+	public static  SurfaceCapabilities  SurfaceCapabilities;
+	public static  SurfaceConfiguration SurfaceConfiguration;
+	private static DepthTexture         _DepthTexture;
 	
 	private static InputHandler<FlyInputs> _InputHandler = null!;
 
@@ -76,7 +73,7 @@ public static unsafe class Graphics {
 	}
 
 	private static void FramebufferResize(Vector2D<int> obj) {
-		CreateSwapchain();
+		ConfigureSurface();
 		UiGraphics.UpdateProjectionMatrixBuffer();
 	}
 
@@ -85,13 +82,12 @@ public static unsafe class Graphics {
 		SurfaceTexture surfaceTexture;
 		WebGPU.SurfaceGetCurrentTexture(Surface, &surfaceTexture);
 		
-		switch(surfaceTexture.Status)
-		{
+		switch(surfaceTexture.Status) {
 			case SurfaceGetCurrentTextureStatus.Lost:
 			case SurfaceGetCurrentTextureStatus.Outdated:
 			case SurfaceGetCurrentTextureStatus.Timeout:
 				WebGPU.TextureRelease(surfaceTexture.Texture);
-				CreateSwapchain();
+				ConfigureSurface();
 				return; // Skip this frame
 				
 			case SurfaceGetCurrentTextureStatus.OutOfMemory:
@@ -218,13 +214,13 @@ public static unsafe class Graphics {
 		WebGPU.DeviceSetUncapturedErrorCallback(Device, new PfnErrorCallback(UncapturedError), null);
 		// WebGPU.DeviceSetDeviceLostCallback(Device, new PfnDeviceLostCallback(DeviceLost), null);
 
-		CreateSwapchain();
+		ConfigureSurface();
 
 		UiGraphics.Initalize();
 		WorldGraphics.Initialize();
 	}
 
-	private static void CreateSwapchain() {
+	private static void ConfigureSurface() {
 		SurfaceConfiguration = new SurfaceConfiguration
 		{
 			Usage       = TextureUsage.RenderAttachment,
@@ -239,10 +235,6 @@ public static unsafe class Graphics {
 		_DepthTexture = new DepthTexture(SurfaceConfiguration.Width, SurfaceConfiguration.Height);
 		
 		WebGPU.SurfaceConfigure(Surface, in SurfaceConfiguration);
-	}
-
-	private static void DeviceLost(DeviceLostReason reason, byte* message, void* userData) {
-		throw new Exception($"WebGPU Device lost! {SilkMarshal.PtrToString((nint)message)} reason: {reason}");
 	}
 
 	private static void UncapturedError(ErrorType type, byte* message, void* userData) {
