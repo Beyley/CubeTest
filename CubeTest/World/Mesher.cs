@@ -36,15 +36,15 @@ public static unsafe class Mesher {
 	}
 
 	public static void Dispose() {
-		Graphics.Disposal.Dispose(VertexOutputBuffers);
-		Graphics.Disposal.Dispose(IndexOutputBuffers);
-		Graphics.Disposal.Dispose(BlocksBuffer);
-		Graphics.Disposal.Dispose(CountsBuffers);
+		Graphics.WebGPU.BufferRelease(VertexOutputBuffers);
+		Graphics.WebGPU.BufferRelease(IndexOutputBuffers);
+		Graphics.WebGPU.BufferRelease(BlocksBuffer);
+		Graphics.WebGPU.BufferRelease(CountsBuffers);
 
-		Graphics.Disposal.Dispose(MeshBindGroupLayout);
-		Graphics.Disposal.Dispose(MeshBindGroup);
-		Graphics.Disposal.Dispose(MeshShader);
-		Graphics.Disposal.Dispose(MeshPipeline);
+		Graphics.WebGPU.BindGroupLayoutRelease(MeshBindGroupLayout);
+		Graphics.WebGPU.BindGroupRelease(MeshBindGroup);
+		Graphics.WebGPU.ShaderModuleRelease(MeshShader);
+		Graphics.WebGPU.ComputePipelineRelease(MeshPipeline);
 	}
 
 	private static void CreateBindGroupLayout() {
@@ -234,7 +234,7 @@ public static unsafe class Mesher {
 		};
 		MeshPipeline = Graphics.WebGPU.DeviceCreateComputePipeline(Graphics.Device, computePipelineDescriptor);
 
-		Graphics.Disposal.Dispose(pipelineLayout);
+		Graphics.WebGPU.PipelineLayoutRelease(pipelineLayout);
 
 		Console.WriteLine($"Created mesh pipeline 0x{(nuint)MeshPipeline:x}");
 
