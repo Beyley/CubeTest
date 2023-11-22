@@ -47,8 +47,8 @@ public unsafe class DepthTexture {
 
 	private void ReleaseUnmanagedResources() {
 		Console.WriteLine($"Deleting texture of size {this.Size}");
-		Graphics.Disposal.Dispose(this.RawTextureView);
-		Graphics.Disposal.Dispose(this.RawTexture);
+		Graphics.WebGPU.TextureViewRelease(this.RawTextureView);
+		Graphics.WebGPU.TextureRelease(this.RawTexture);
 	}
 
 	public void Dispose() {

@@ -6,7 +6,6 @@ using Silk.NET.Core.Native;
 using Silk.NET.Input;
 using Silk.NET.Maths;
 using Silk.NET.WebGPU;
-using Silk.NET.WebGPU.Extensions.Disposal;
 using Silk.NET.Windowing;
 using Silk.NET.Windowing.Glfw;
 using Silk.NET.Windowing.Sdl;
@@ -19,8 +18,6 @@ public static unsafe class Graphics {
 
 	// ReSharper disable once InconsistentNaming
 	public static WebGPU WebGPU = null!;
-	// ReSharper disable once InconsistentNaming
-	public static WebGPUDisposal Disposal = null!;
 
 	public static Instance* Instance;
 	public static Adapter*  Adapter;
@@ -69,7 +66,7 @@ public static unsafe class Graphics {
 	private static void WindowClosing() {
 		WorldGraphics.Dispose();
 		UiGraphics.Dispose();
-		Disposal.Dispose(Device);
+		WebGPU.DeviceRelease(Device);
 	}
 
 	private static void FramebufferResize(Vector2D<int> obj) {
@@ -206,9 +203,6 @@ public static unsafe class Graphics {
 
 		//Get our Queue to submit things to
 		Queue = WebGPU.DeviceGetQueue(Device);
-
-		//Create our disposal extension
-		Disposal = new WebGPUDisposal(WebGPU);
 
 		//Set up our error callbacks
 		WebGPU.DeviceSetUncapturedErrorCallback(Device, new PfnErrorCallback(UncapturedError), null);

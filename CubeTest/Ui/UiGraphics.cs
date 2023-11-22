@@ -28,22 +28,22 @@ public static unsafe class UiGraphics {
 	private static Buffer* _VertexBuffer;
 
 	public static void Dispose() {
-		Graphics.Disposal.Dispose(_VertexBuffer);
+		Graphics.WebGPU.BufferRelease(_VertexBuffer);
 
-		Graphics.Disposal.Dispose(_TextureSamplerBindGroupLayout);
-		Graphics.Disposal.Dispose(_TextureBindGroup);
+		Graphics.WebGPU.BindGroupLayoutRelease(_TextureSamplerBindGroupLayout);
+		Graphics.WebGPU.BindGroupRelease(_TextureBindGroup);
 
-		Graphics.Disposal.Dispose(_ProjectionMatrixBindGroupLayout);
-		Graphics.Disposal.Dispose(_ProjectionMatrixBindGroup);
+		Graphics.WebGPU.BindGroupLayoutRelease(_ProjectionMatrixBindGroupLayout);
+		Graphics.WebGPU.BindGroupRelease(_ProjectionMatrixBindGroup);
 
-		Graphics.Disposal.Dispose(_Sampler);
+		Graphics.WebGPU.SamplerRelease(_Sampler);
 		_Texture.Dispose();
 
-		Graphics.Disposal.Dispose(_ProjectionMatrixBuffer);
+		Graphics.WebGPU.BufferRelease(_ProjectionMatrixBuffer);
 
-		Graphics.Disposal.Dispose(_Pipeline);
+		Graphics.WebGPU.RenderPipelineRelease(_Pipeline);
 
-		Graphics.Disposal.Dispose(_Shader);
+		Graphics.WebGPU.ShaderModuleRelease(_Shader);
 	}
 
 	public static void Initalize() {
@@ -187,7 +187,7 @@ public static unsafe class UiGraphics {
 
 		_Pipeline = Graphics.WebGPU.DeviceCreateRenderPipeline(Graphics.Device, renderPipelineDescriptor);
 
-		Graphics.Disposal.Dispose(pipelineLayout);
+		Graphics.WebGPU.PipelineLayoutRelease(pipelineLayout);
 
 		SilkMarshal.Free((nint)renderPipelineDescriptor.Vertex.EntryPoint);
 		SilkMarshal.Free((nint)fragmentState.EntryPoint);
