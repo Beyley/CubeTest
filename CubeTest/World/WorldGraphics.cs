@@ -354,7 +354,7 @@ public static unsafe class WorldGraphics {
 		};
 
 		ColorTargetState colorTargetState = new ColorTargetState {
-			Format    = Graphics.SwapchainFormat,
+			Format    = Graphics.SurfaceCapabilities.Formats[0],
 			Blend     = &blendState,
 			WriteMask = ColorWriteMask.All
 		};

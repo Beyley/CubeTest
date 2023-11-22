@@ -3,11 +3,13 @@ using CubeTest.Abstractions;
 using CubeTest.Game.Input;
 using CubeTest.Ui;
 using CubeTest.World;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Silk.NET.Core.Native;
 using Silk.NET.Input;
 using Silk.NET.Maths;
 using Silk.NET.WebGPU;
 using Silk.NET.WebGPU.Extensions.Disposal;
+using Silk.NET.WebGPU.Extensions.WGPU;
 using Silk.NET.Windowing;
 using Silk.NET.Windowing.Glfw;
 using Silk.NET.Windowing.Sdl;
@@ -28,10 +30,10 @@ public static unsafe class Graphics {
 	public static Device*   Device;
 	public static Queue*    Queue;
 
-	public static  Surface*      Surface;
-	public static  TextureFormat SwapchainFormat;
-	public static  SwapChain*    Swapchain;
-	private static DepthTexture  _DepthTexture;
+	public static  Surface* Surface;
+	public static SurfaceCapabilities SurfaceCapabilities;
+	public static SurfaceConfiguration SurfaceConfiguration;
+	private static DepthTexture _DepthTexture;
 	
 	private static InputHandler<FlyInputs> _InputHandler = null!;
 
@@ -78,11 +80,13 @@ public static unsafe class Graphics {
 		UiGraphics.UpdateProjectionMatrixBuffer();
 	}
 
-	private static void Render(double obj) {
-		TextureView* nextView = GetNextTextureView();
+	private static void Render(double obj)
+	{
+		SurfaceTexture surfaceTexture = *GetCurrentSurfaceTexture();
+		TextureView* currentView = WebGPU.TextureCreateView(surfaceTexture.Texture, null);
 
-		//Lets skip this frame, and try again next frame
-		if (nextView == null)
+		// Lets skip this frame, and try again next frame
+		if (currentView == null)
 			return;
 
 		//Create our command encoder
@@ -90,7 +94,7 @@ public static unsafe class Graphics {
 
 		//Create our colour attachment, with a clear value of sky blue
 		RenderPassColorAttachment colorAttachment = new RenderPassColorAttachment {
-			View          = nextView,
+			View          = currentView,
 			ResolveTarget = null,
 			LoadOp        = LoadOp.Clear,
 			StoreOp       = StoreOp.Store,
@@ -127,8 +131,8 @@ public static unsafe class Graphics {
 
 		//End the render pass
 		WebGPU.RenderPassEncoderEnd(renderPass);
-		//Dispose of the TextureView* of the SwapChain
-		Disposal.Dispose(nextView);
+		//Dispose of the TextureView* of the Surface
+		Disposal.Dispose(currentView);
 
 		//Finish the command encoder
 		CommandBuffer* commandBuffer = WebGPU.CommandEncoderFinish(encoder, new CommandBufferDescriptor());
@@ -136,33 +140,38 @@ public static unsafe class Graphics {
 		//Submit the command buffer to the queue
 		WebGPU.QueueSubmit(Queue, 1, &commandBuffer);
 
-		//Present the swapchain
-		WebGPU.SwapChainPresent(Swapchain);
+		//Present the surface
+		WebGPU.SurfacePresent(Surface);
 		Window.SwapBuffers();
+		
+		WebGPU.CommandBufferRelease(commandBuffer);
+		WebGPU.RenderPassEncoderRelease(renderPass);
+		WebGPU.CommandEncoderRelease(encoder);
+		WebGPU.TextureViewRelease(currentView);
+		WebGPU.TextureRelease(surfaceTexture.Texture);
 	}
 
 	[return: MaybeNull]
-	private static TextureView* GetNextTextureView() {
-		TextureView* nextView = null;
-
-		for (int attempt = 0; attempt < 2; attempt++) {
-			nextView = WebGPU.SwapChainGetCurrentTextureView(Swapchain);
-
-			if (attempt == 0 && nextView == null) {
-				Console.WriteLine("Getting swapchain TextureView* failed, creating a new swapchain to see if that helps...\n");
+	private static SurfaceTexture* GetCurrentSurfaceTexture() {
+		SurfaceTexture surfaceTexture;
+		WebGPU.SurfaceGetCurrentTexture(Surface, &surfaceTexture);
+		
+		switch(surfaceTexture.Status)
+		{
+			case SurfaceGetCurrentTextureStatus.Lost:
+			case SurfaceGetCurrentTextureStatus.Outdated:
+			case SurfaceGetCurrentTextureStatus.Timeout:
+				WebGPU.TextureRelease(surfaceTexture.Texture);
 				CreateSwapchain();
-				continue;
-			}
-
-			break;
+				return null; // Skip this frame
+				
+			case SurfaceGetCurrentTextureStatus.OutOfMemory:
+			case SurfaceGetCurrentTextureStatus.DeviceLost:
+			case SurfaceGetCurrentTextureStatus.Force32:
+				throw new Exception($"Could not get current surface texture: {surfaceTexture.Status}");
 		}
 
-		if (nextView == null) {
-			Console.WriteLine("Failed to get TextureView* for SwapChain* after multiple attempts; giving up.\n");
-			return nextView;
-		}
-
-		return nextView;
+		return &surfaceTexture;
 	}
 
 	public static void Load() {
@@ -193,7 +202,7 @@ public static unsafe class Graphics {
 		
 		//Create our device
 		WebGPU.AdapterRequestDevice(Adapter, new DeviceDescriptor {
-			RequiredFeaturesCount = 1,
+			// RequiredFeaturesCount = 1,
 			RequiredFeatures      = &name,
 			RequiredLimits        = null,
 			DefaultQueue          = default(QueueDescriptor)
@@ -213,7 +222,7 @@ public static unsafe class Graphics {
 
 		//Set up our error callbacks
 		WebGPU.DeviceSetUncapturedErrorCallback(Device, new PfnErrorCallback(UncapturedError), null);
-		WebGPU.DeviceSetDeviceLostCallback(Device, new PfnDeviceLostCallback(DeviceLost), null);
+		// WebGPU.DeviceSetDeviceLostCallback(Device, new PfnDeviceLostCallback(DeviceLost), null);
 
 		CreateSwapchain();
 
@@ -222,19 +231,20 @@ public static unsafe class Graphics {
 	}
 
 	private static void CreateSwapchain() {
-		SwapchainFormat = WebGPU.SurfaceGetPreferredFormat(Surface, Adapter);
-
-		SwapChainDescriptor swapChainDescriptor = new SwapChainDescriptor {
+		SurfaceConfiguration = new SurfaceConfiguration
+		{
 			Usage       = TextureUsage.RenderAttachment,
-			Format      = SwapchainFormat,
+			Device      = Device,
+			Format      = SurfaceCapabilities.Formats[0],
+			PresentMode = PresentMode.Fifo,
+			AlphaMode   = SurfaceCapabilities.AlphaModes[0],
 			Width       = (uint)Window.FramebufferSize.X,
 			Height      = (uint)Window.FramebufferSize.Y,
-			PresentMode = PresentMode.Fifo
 		};
 
-		Swapchain = WebGPU.DeviceCreateSwapChain(Device, Surface, swapChainDescriptor);
-
-		_DepthTexture = new DepthTexture(swapChainDescriptor.Width, swapChainDescriptor.Height);
+		_DepthTexture = new DepthTexture(SurfaceConfiguration.Width, SurfaceConfiguration.Height);
+		
+		WebGPU.SurfaceConfigure(Surface, in SurfaceConfiguration);
 	}
 
 	private static void DeviceLost(DeviceLostReason reason, byte* message, void* userData) {

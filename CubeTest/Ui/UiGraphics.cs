@@ -106,7 +106,7 @@ public static unsafe class UiGraphics {
 		};
 
 		ColorTargetState colorTargetState = new ColorTargetState {
-			Format    = Graphics.SwapchainFormat,
+			Format    = Graphics.SurfaceCapabilities.Formats[0],
 			Blend     = &blendState,
 			WriteMask = ColorWriteMask.All
 		};
