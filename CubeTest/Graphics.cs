@@ -1,9 +1,6 @@
-using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 using CubeTest.Abstractions;
 using CubeTest.Game;
-using CubeTest.Game.Input;
-using CubeTest.Game.Input.Fly;
 using CubeTest.Game.Input.Player;
 using CubeTest.Ui;
 using CubeTest.World;
@@ -11,7 +8,6 @@ using Silk.NET.Core.Native;
 using Silk.NET.Input;
 using Silk.NET.Maths;
 using Silk.NET.WebGPU;
-using Silk.NET.WebGPU.Extensions.Disposal;
 using Silk.NET.Windowing;
 using Silk.NET.Windowing.Glfw;
 using Silk.NET.Windowing.Sdl;
@@ -20,22 +16,20 @@ using Color = Silk.NET.WebGPU.Color;
 namespace CubeTest;
 
 public static unsafe class Graphics {
-	public static  IWindow       Window = null!;
+	public static IWindow Window = null!;
 
 	// ReSharper disable once InconsistentNaming
 	public static WebGPU WebGPU = null!;
-	// ReSharper disable once InconsistentNaming
-	public static WebGPUDisposal Disposal = null!;
 
 	public static Instance* Instance;
 	public static Adapter*  Adapter;
 	public static Device*   Device;
 	public static Queue*    Queue;
 
-	public static  Surface*      Surface;
-	public static  TextureFormat SwapchainFormat;
-	public static  SwapChain*    Swapchain;
-	private static DepthTexture  _DepthTexture;
+	public static  Surface*             Surface;
+	public static  SurfaceCapabilities  SurfaceCapabilities;
+	public static  SurfaceConfiguration SurfaceConfiguration;
+	private static DepthTexture         _DepthTexture;
 	
 	private static Player _Player;
 	
@@ -80,19 +74,37 @@ public static unsafe class Graphics {
 	private static void WindowClosing() {
 		WorldGraphics.Dispose();
 		UiGraphics.Dispose();
-		Disposal.Dispose(Device);
+		WebGPU.DeviceRelease(Device);
 	}
 
 	private static void FramebufferResize(Vector2D<int> obj) {
-		CreateSwapchain();
+		ConfigureSurface();
 		UiGraphics.UpdateProjectionMatrixBuffer();
 	}
 
-	private static void Render(double obj) {
-		TextureView* nextView = GetNextTextureView();
+	private static void Render(double obj)
+	{
+		SurfaceTexture surfaceTexture;
+		WebGPU.SurfaceGetCurrentTexture(Surface, &surfaceTexture);
+		
+		switch(surfaceTexture.Status) {
+			case SurfaceGetCurrentTextureStatus.Lost:
+			case SurfaceGetCurrentTextureStatus.Outdated:
+			case SurfaceGetCurrentTextureStatus.Timeout:
+				WebGPU.TextureRelease(surfaceTexture.Texture);
+				ConfigureSurface();
+				return; // Skip this frame
+				
+			case SurfaceGetCurrentTextureStatus.OutOfMemory:
+			case SurfaceGetCurrentTextureStatus.DeviceLost:
+			case SurfaceGetCurrentTextureStatus.Force32:
+				throw new Exception($"Could not get current surface texture: {surfaceTexture.Status}");
+		}
+		
+		TextureView* currentView = WebGPU.TextureCreateView(surfaceTexture.Texture, null);
 
-		//Lets skip this frame, and try again next frame
-		if (nextView == null)
+		// Lets skip this frame, and try again next frame
+		if (currentView == null)
 			return;
 
 		//Create our command encoder
@@ -100,7 +112,7 @@ public static unsafe class Graphics {
 
 		//Create our colour attachment, with a clear value of sky blue
 		RenderPassColorAttachment colorAttachment = new RenderPassColorAttachment {
-			View          = nextView,
+			View          = currentView,
 			ResolveTarget = null,
 			LoadOp        = LoadOp.Clear,
 			StoreOp       = StoreOp.Store,
@@ -137,8 +149,6 @@ public static unsafe class Graphics {
 
 		//End the render pass
 		WebGPU.RenderPassEncoderEnd(renderPass);
-		//Dispose of the TextureView* of the SwapChain
-		Disposal.Dispose(nextView);
 
 		//Finish the command encoder
 		CommandBuffer* commandBuffer = WebGPU.CommandEncoderFinish(encoder, new CommandBufferDescriptor());
@@ -146,35 +156,17 @@ public static unsafe class Graphics {
 		//Submit the command buffer to the queue
 		WebGPU.QueueSubmit(Queue, 1, &commandBuffer);
 
-		//Present the swapchain
-		WebGPU.SwapChainPresent(Swapchain);
+		//Present the surface
+		WebGPU.SurfacePresent(Surface);
 		Window.SwapBuffers();
+		
+		WebGPU.CommandBufferRelease(commandBuffer);
+		WebGPU.RenderPassEncoderRelease(renderPass);
+		WebGPU.CommandEncoderRelease(encoder);
+		WebGPU.TextureViewRelease(currentView);
+		WebGPU.TextureRelease(surfaceTexture.Texture);
 	}
-
-	[return: MaybeNull]
-	private static TextureView* GetNextTextureView() {
-		TextureView* nextView = null;
-
-		for (int attempt = 0; attempt < 2; attempt++) {
-			nextView = WebGPU.SwapChainGetCurrentTextureView(Swapchain);
-
-			if (attempt == 0 && nextView == null) {
-				Console.WriteLine("Getting swapchain TextureView* failed, creating a new swapchain to see if that helps...\n");
-				CreateSwapchain();
-				continue;
-			}
-
-			break;
-		}
-
-		if (nextView == null) {
-			Console.WriteLine("Failed to get TextureView* for SwapChain* after multiple attempts; giving up.\n");
-			return nextView;
-		}
-
-		return nextView;
-	}
-
+	
 	public static void Load() {
 		_InputHandler.Load(Window.CreateInput());
 		
@@ -203,7 +195,7 @@ public static unsafe class Graphics {
 		
 		//Create our device
 		WebGPU.AdapterRequestDevice(Adapter, new DeviceDescriptor {
-			RequiredFeaturesCount = 1,
+			// RequiredFeaturesCount = 1,
 			RequiredFeatures      = &name,
 			RequiredLimits        = null,
 			DefaultQueue          = default(QueueDescriptor)
@@ -214,18 +206,17 @@ public static unsafe class Graphics {
 			Device = device;
 			Console.WriteLine($"Device 0x{(nint)Device:x8} created!");
 		}), null);
+		
+		WebGPU.SurfaceGetCapabilities(Surface, Adapter, ref SurfaceCapabilities);
 
 		//Get our Queue to submit things to
 		Queue = WebGPU.DeviceGetQueue(Device);
 
-		//Create our disposal extension
-		Disposal = new WebGPUDisposal(WebGPU);
-
 		//Set up our error callbacks
 		WebGPU.DeviceSetUncapturedErrorCallback(Device, new PfnErrorCallback(UncapturedError), null);
-		WebGPU.DeviceSetDeviceLostCallback(Device, new PfnDeviceLostCallback(DeviceLost), null);
+		// WebGPU.DeviceSetDeviceLostCallback(Device, new PfnDeviceLostCallback(DeviceLost), null);
 
-		CreateSwapchain();
+		ConfigureSurface();
 
 		UiGraphics.Initalize();
 		WorldGraphics.Initialize();
@@ -236,24 +227,21 @@ public static unsafe class Graphics {
 		};
 	}
 
-	private static void CreateSwapchain() {
-		SwapchainFormat = WebGPU.SurfaceGetPreferredFormat(Surface, Adapter);
-
-		SwapChainDescriptor swapChainDescriptor = new SwapChainDescriptor {
+	private static void ConfigureSurface() {
+		SurfaceConfiguration = new SurfaceConfiguration
+		{
 			Usage       = TextureUsage.RenderAttachment,
-			Format      = SwapchainFormat,
+			Device      = Device,
+			Format      = SurfaceCapabilities.Formats[0],
+			PresentMode = PresentMode.Fifo,
+			AlphaMode   = SurfaceCapabilities.AlphaModes[0],
 			Width       = (uint)Window.FramebufferSize.X,
 			Height      = (uint)Window.FramebufferSize.Y,
-			PresentMode = PresentMode.Fifo
 		};
 
-		Swapchain = WebGPU.DeviceCreateSwapChain(Device, Surface, swapChainDescriptor);
-
-		_DepthTexture = new DepthTexture(swapChainDescriptor.Width, swapChainDescriptor.Height);
-	}
-
-	private static void DeviceLost(DeviceLostReason reason, byte* message, void* userData) {
-		throw new Exception($"WebGPU Device lost! {SilkMarshal.PtrToString((nint)message)} reason: {reason}");
+		_DepthTexture = new DepthTexture(SurfaceConfiguration.Width, SurfaceConfiguration.Height);
+		
+		WebGPU.SurfaceConfigure(Surface, in SurfaceConfiguration);
 	}
 
 	private static void UncapturedError(ErrorType type, byte* message, void* userData) {
