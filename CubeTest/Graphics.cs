@@ -59,7 +59,7 @@ public static unsafe class Graphics {
 		Window.Update += d => {
 			// _InputHandler.Update((float)d);
 			_Player.Update((float)d);
-			WorldGraphics.Camera.Position = _Player.Position + new Vector3(0, 0.4f, 0);
+			WorldGraphics.Camera.Position = _Player.Position + new Vector3(0, _Player.Size.Y * 0.25f, 0);
 			WorldGraphics.Camera.Pitch = _Player.Pitch;
 			WorldGraphics.Camera.Yaw = _Player.Yaw;
 		};

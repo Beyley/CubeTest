@@ -13,6 +13,8 @@ public class Player
         inputHandler.Player = this;
     }
 
+    public readonly Vector3 Size = new(0.5f, 2f, 0.5f);
+
     public Vector3 Position;
     public bool OnGround;
 
@@ -38,8 +40,6 @@ public class Player
         Pitch = Math.Clamp(Pitch, -89.99f, 89.99f);
         
         this.Position += Vector3.Normalize(Vector3.Cross(WorldGraphics.Camera.Front, WorldGraphics.Camera.Up)) * d * inputs.Move.X;
-        this.Position += WorldGraphics.Camera.Front with { Y = 0 } * d * inputs.Move.Y;
-
-        // this.Position += new Vector3(inputs.Move.X, 0, inputs.Move.Y) * d;
+        this.Position += Vector3.Normalize(WorldGraphics.Camera.Front with { Y = 0 }) * d * inputs.Move.Y;
     }
 }
