@@ -5,7 +5,12 @@ public unsafe struct Chunk {
 	public const int CHUNK_SIZE_SQ = CHUNK_SIZE * CHUNK_SIZE;
 	public const int CHUNK_SIZE_CU = CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE;
 
-	public fixed uint Blocks[CHUNK_SIZE_CU];
+	// public int ChunkX;
+	// public int ChunkY;
+	// public int ChunkZ;
+	public const int CHUNK_POS_SIZE = 3;
+	
+	public fixed uint Blocks[CHUNK_SIZE_CU + CHUNK_POS_SIZE];
 
 	/// <summary>
 	/// Gets an index into the blocks array from the position
@@ -15,6 +20,6 @@ public unsafe struct Chunk {
 	/// <param name="z">Z pos</param>
 	/// <returns>The index</returns>
 	public int IndexFromPos(int x, int y, int z) {
-		return CHUNK_SIZE_SQ * y + CHUNK_SIZE * z + x;
+		return CHUNK_SIZE_SQ * y + CHUNK_SIZE * z + x + CHUNK_POS_SIZE;
 	}
 }

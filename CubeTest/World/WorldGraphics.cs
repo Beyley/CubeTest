@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using CubeTest.Abstractions;
@@ -8,7 +7,6 @@ using CubeTest.ModelLoader;
 using CubeTest.ModelLoader.WavefrontObj;
 using Silk.NET.Core.Native;
 using Silk.NET.WebGPU;
-using Silk.NET.WebGPU.Extensions.WGPU;
 using Buffer = Silk.NET.WebGPU.Buffer;
 using Texture = CubeTest.Abstractions.Texture;
 
@@ -33,7 +31,10 @@ public static unsafe class WorldGraphics {
 	private static ulong            _IndexBufferSize;
 	private static Buffer*          _IndexBuffer;
 
-	public static Camera Camera = new Camera();
+	public static Camera Camera = new()
+	{
+		Position = new Vector3(RenderDistance * 1.5f, 6, RenderDistance * 1.5f)
+	};
 
 	public static void Dispose() {
 		_Texture.Dispose();
@@ -76,8 +77,19 @@ public static unsafe class WorldGraphics {
 		CreateModelVertexBuffer();
 		CreateModelIndexBuffer();
 
-		Mesher.Initialize();
-		InitChunkData();
+		Mesher.Initialize(TotalChunkCount);
+
+		int i = 0;
+		for (int x = 0; x < RenderDistance; x++)
+		{
+			for (int y = 0; y < RenderDistance; y++)
+			{
+				// Console.WriteLine($"{i}: {x}, {y}");
+				InitChunkData(ref Chunks[i], out Buffer* buffer, x, 0, y);
+				TempChunkBuffers[i] = buffer;	
+				i++;
+			}
+		}
 	}
 
 	private static void CreateModelVertexBuffer() {
@@ -436,56 +448,80 @@ public static unsafe class WorldGraphics {
 		Console.WriteLine($"Created pipeline 0x{(nuint)_Pipeline:x}");
 	}
 
-	private static Buffer* _TempChunkBuffer;
-
-	private static void InitChunkData() {
+	private static void InitChunkData(ref Chunk chunk, out Buffer* buffer, int x, int y, int z) {
 		Random r = new Random();
-		for (int i = 0; i < Chunk.CHUNK_SIZE_CU; i++)
-			_Chunk.Blocks[i] = r.Next() % 2 == 0 ? (uint)BlockId.Dirt : (uint)BlockId.Air;
+		chunk.Blocks[0] = (uint)x;
+		chunk.Blocks[1] = (uint)y;
+		chunk.Blocks[2] = (uint)z;
+		
+		for (int i = Chunk.CHUNK_POS_SIZE; i < Chunk.CHUNK_SIZE_CU; i++)
+			chunk.Blocks[i] = r.Next() % 2 == 0 ? (uint)BlockId.Dirt : (uint)BlockId.Air;
 
-		_TempChunkBuffer = Graphics.WebGPU.DeviceCreateBuffer(Graphics.Device, new BufferDescriptor {
+		buffer = Graphics.WebGPU.DeviceCreateBuffer(Graphics.Device, new BufferDescriptor {
 			Size             = Mesher.BlocksBufferSize,
 			Usage            = BufferUsage.CopySrc | BufferUsage.MapWrite,
 			MappedAtCreation = true
 		});
 
-		void* map = Graphics.WebGPU.BufferGetMappedRange(_TempChunkBuffer, 0, (nuint)Mesher.BlocksBufferSize);
+		void* map = Graphics.WebGPU.BufferGetMappedRange(buffer, 0, (nuint)Mesher.BlocksBufferSize);
 
-		fixed (void* blocks = _Chunk.Blocks) {
+		fixed (void* blocks = chunk.Blocks) {
 			Unsafe.CopyBlock(map, blocks, (uint)Mesher.BlocksBufferSize);
 		}
-
-		Graphics.WebGPU.BufferUnmap(_TempChunkBuffer);
+		
+		Graphics.WebGPU.BufferUnmap(buffer);
 	}
 
-	private static Chunk _Chunk = new Chunk();
+	private const int RenderDistance = 8;
+	private const int TotalChunkCount = RenderDistance * RenderDistance;
+	
+	private static readonly Chunk[] Chunks = new Chunk[TotalChunkCount];
+	private static readonly Buffer*[] TempChunkBuffers = new Buffer*[TotalChunkCount];
+	
+	private static bool _HasMeshed = false;
 
-	public static void Draw(CommandEncoder* commandEncoder, RenderPassEncoder* renderPass, QuerySet* querySet) {
-		//Copy chunk data from temp buffer to blocks buffer
-		Graphics.WebGPU.CommandEncoderCopyBufferToBuffer(commandEncoder, _TempChunkBuffer, 0, Mesher.BlocksBuffer, 0, Mesher.BlocksBufferSize);
-
-		Mesher.ResetCounts();
-
-		// Graphics.WebGPU.CommandEncoderWriteTimestamp(commandEncoder, querySet, 0);
-		
-		ComputePassEncoder* computePass = Graphics.WebGPU.CommandEncoderBeginComputePass(commandEncoder, new ComputePassDescriptor());
-		Mesher.Mesh(computePass);
-		Graphics.WebGPU.ComputePassEncoderEnd(computePass);
-
-		// Graphics.WebGPU.CommandEncoderWriteTimestamp(commandEncoder, querySet, 1);
+	public static void Draw(CommandEncoder* commandEncoder, RenderPassEncoder* renderPass)
+	{
+		if (!_HasMeshed)
+		{
+			_HasMeshed = true;
+			MeshChunks(commandEncoder);
+		}
 
 		UpdateProjectionMatrixBuffer();
-
 		Graphics.WebGPU.RenderPassEncoderSetPipeline(renderPass, _Pipeline);
 		Graphics.WebGPU.RenderPassEncoderSetBindGroup(renderPass, 0, _TextureBindGroup, 0, null);
 		Graphics.WebGPU.RenderPassEncoderSetBindGroup(renderPass, 1, _ProjectionMatrixBindGroup, 0, null);
-		Graphics.WebGPU.RenderPassEncoderSetVertexBuffer(renderPass, 0, Mesher.VertexOutputBuffer, 0, Mesher.VertexOutputBufferSize);
-		Graphics.WebGPU.RenderPassEncoderSetIndexBuffer(renderPass, Mesher.IndexOutputBuffer, IndexFormat.Uint32, 0, Mesher.IndexOutputBufferSize);
-		Graphics.WebGPU.RenderPassEncoderDrawIndexedIndirect(renderPass, Mesher.CountsBuffer, 0);
+		
+		// Render pass
+		for (ulong i = 0; i < TotalChunkCount; i++)
+		{
+			DrawChunk(renderPass, i);
+		}
+	}
 
-		// Graphics.WebGPU.RenderPassEncoderSetVertexBuffer(renderPass, 0, _VertexBuffer, 0, _VertexBufferSize);
-		// Graphics.WebGPU.RenderPassEncoderSetIndexBuffer(renderPass, _IndexBuffer, IndexFormat.Uint32, 0, _IndexBufferSize);
-		// Graphics.WebGPU.RenderPassEncoderDrawIndexed(renderPass, (uint)_Model.Indices.Length, 1, 0, 0, 0);
+	private static void DrawChunk(RenderPassEncoder* renderPass, ulong i)
+	{
+		Graphics.WebGPU.RenderPassEncoderSetVertexBuffer(renderPass, 0, Mesher.VertexOutputBuffers, Mesher.VertexOutputBufferSize * i, Mesher.VertexOutputBufferSize);
+		Graphics.WebGPU.RenderPassEncoderSetIndexBuffer(renderPass, Mesher.IndexOutputBuffers, IndexFormat.Uint32, Mesher.IndexOutputBufferSize * i, Mesher.IndexOutputBufferSize);
+		
+		Graphics.WebGPU.RenderPassEncoderDrawIndexedIndirect(renderPass, Mesher.CountsBuffers, Mesher.CountsBufferSize * i);
+	}
+
+	private static void MeshChunks(CommandEncoder* commandEncoder)
+	{
+		// Compute pass
+		for (uint i = 0; i < TempChunkBuffers.Length; i++)
+		{
+			ComputePassEncoder* computePass = Graphics.WebGPU.CommandEncoderBeginComputePass(commandEncoder, new ComputePassDescriptor());
+			Buffer* buffer = TempChunkBuffers[i];
+			//Copy chunk data from temp buffer to blocks buffer
+			Graphics.WebGPU.CommandEncoderCopyBufferToBuffer(commandEncoder, buffer, 0, Mesher.BlocksBuffer, 0, Mesher.BlocksBufferSize);
+
+			Mesher.ResetCounts(i);
+			Mesher.Mesh(computePass, i);
+			Graphics.WebGPU.ComputePassEncoderEnd(computePass);
+		}
 	}
 
 	private static void CreateShader() {
