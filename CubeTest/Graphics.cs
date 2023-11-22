@@ -82,7 +82,24 @@ public static unsafe class Graphics {
 
 	private static void Render(double obj)
 	{
-		SurfaceTexture surfaceTexture = *GetCurrentSurfaceTexture();
+		SurfaceTexture surfaceTexture;
+		WebGPU.SurfaceGetCurrentTexture(Surface, &surfaceTexture);
+		
+		switch(surfaceTexture.Status)
+		{
+			case SurfaceGetCurrentTextureStatus.Lost:
+			case SurfaceGetCurrentTextureStatus.Outdated:
+			case SurfaceGetCurrentTextureStatus.Timeout:
+				WebGPU.TextureRelease(surfaceTexture.Texture);
+				CreateSwapchain();
+				return; // Skip this frame
+				
+			case SurfaceGetCurrentTextureStatus.OutOfMemory:
+			case SurfaceGetCurrentTextureStatus.DeviceLost:
+			case SurfaceGetCurrentTextureStatus.Force32:
+				throw new Exception($"Could not get current surface texture: {surfaceTexture.Status}");
+		}
+		
 		TextureView* currentView = WebGPU.TextureCreateView(surfaceTexture.Texture, null);
 
 		// Lets skip this frame, and try again next frame
@@ -131,8 +148,6 @@ public static unsafe class Graphics {
 
 		//End the render pass
 		WebGPU.RenderPassEncoderEnd(renderPass);
-		//Dispose of the TextureView* of the Surface
-		Disposal.Dispose(currentView);
 
 		//Finish the command encoder
 		CommandBuffer* commandBuffer = WebGPU.CommandEncoderFinish(encoder, new CommandBufferDescriptor());
@@ -150,30 +165,7 @@ public static unsafe class Graphics {
 		WebGPU.TextureViewRelease(currentView);
 		WebGPU.TextureRelease(surfaceTexture.Texture);
 	}
-
-	[return: MaybeNull]
-	private static SurfaceTexture* GetCurrentSurfaceTexture() {
-		SurfaceTexture surfaceTexture;
-		WebGPU.SurfaceGetCurrentTexture(Surface, &surfaceTexture);
-		
-		switch(surfaceTexture.Status)
-		{
-			case SurfaceGetCurrentTextureStatus.Lost:
-			case SurfaceGetCurrentTextureStatus.Outdated:
-			case SurfaceGetCurrentTextureStatus.Timeout:
-				WebGPU.TextureRelease(surfaceTexture.Texture);
-				CreateSwapchain();
-				return null; // Skip this frame
-				
-			case SurfaceGetCurrentTextureStatus.OutOfMemory:
-			case SurfaceGetCurrentTextureStatus.DeviceLost:
-			case SurfaceGetCurrentTextureStatus.Force32:
-				throw new Exception($"Could not get current surface texture: {surfaceTexture.Status}");
-		}
-
-		return &surfaceTexture;
-	}
-
+	
 	public static void Load() {
 		_InputHandler.Load(Window.CreateInput());
 		
