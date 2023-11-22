@@ -5,7 +5,7 @@ namespace CubeTest.Game.Input.Player;
 
 public class PlayerInputHandler : InputHandler<FlyInputs>
 {
-    internal Game.Player Player;
+    internal Game.Player Player { private get; set; } = null!;
     
     protected override void ProcessInputs(float d, FlyInputs inputs) => Player.HandleInputs(d, inputs);
 
