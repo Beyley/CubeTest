@@ -213,6 +213,8 @@ public static unsafe class Graphics {
 			Device = device;
 			Console.WriteLine($"Device 0x{(nint)Device:x8} created!");
 		}), null);
+		
+		WebGPU.SurfaceGetCapabilities(Surface, Adapter, ref SurfaceCapabilities);
 
 		//Get our Queue to submit things to
 		Queue = WebGPU.DeviceGetQueue(Device);

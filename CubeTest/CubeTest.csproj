@@ -14,6 +14,7 @@
         <PackageReference Include="Silk.NET.Input.Sdl" Version="2.19.0" />
         <PackageReference Include="Silk.NET.WebGPU" Version="2.19.0" />
         <PackageReference Include="Silk.NET.WebGPU.Extensions.Disposal" Version="2.19.0" />
+        <PackageReference Include="Silk.NET.WebGPU.Native.WGPU" Version="2.19.0" />
         <PackageReference Include="Silk.NET.Windowing.Glfw" Version="2.19.0" />
         <PackageReference Include="Silk.NET.Windowing.Sdl" Version="2.19.0" />
         <PackageReference Include="SixLabors.ImageSharp" Version="3.0.2" />
