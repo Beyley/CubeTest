@@ -35,6 +35,7 @@ public class Player
         const float deceleration = 12f;
         const float acceleration = deceleration + 4.0f;
         const float maxSpeed = 0.02f;
+        const float jumpPower = 1.0f;
 
         if (this._targetVelocity.X != 0) this._velocity.X += this._targetVelocity.X * acceleration * d;
         this._velocity.X -= this._velocity.X * deceleration * d;
@@ -42,17 +43,22 @@ public class Player
         if (this._targetVelocity.Z != 0) this._velocity.Z += this._targetVelocity.Z * acceleration * d;
         this._velocity.Z -= this._velocity.Z * deceleration * d;
 
-        if (this._onGround) this._velocity.Y -= 1 * d;
-        else this._velocity.Y = 0;
+        if (this._targetVelocity.Y != 0) this._velocity.Y += this._targetVelocity.Y * jumpPower * d;
+        this._velocity.Y -= this._velocity.Y * deceleration * d;
+        
+        if (!this._onGround) this._velocity.Y -= 0.25f * d;
+        // else this._velocity.Y = this._targetVelocity.Y * jumpPower;
 
-        this._velocity = Vector3.Clamp(this._velocity, -Vector3.One * maxSpeed, Vector3.One * maxSpeed);
+        Vector3 one = new Vector3(maxSpeed, 100.0f, maxSpeed);
+
+        this._velocity = Vector3.Clamp(this._velocity, -one, one);
         
         Console.WriteLine(this._velocity);
             
         this.Position += _velocity;
     }
 
-    private bool IsOnGround() => this.Position.Y > 0;
+    private bool IsOnGround() => this.Position.Y < 0;
     
     public void HandleInputs(float d, FlyInputs inputs)
     {
@@ -62,5 +68,10 @@ public class Player
         
         this._targetVelocity = Vector3.Normalize(Vector3.Cross(WorldGraphics.Camera.Front, WorldGraphics.Camera.Up)) * d * inputs.Move.X;
         this._targetVelocity += Vector3.Normalize(WorldGraphics.Camera.Front with { Y = 0 }) * d * inputs.Move.Y;
+
+        if (inputs.UpDown > 0.5f && this._onGround)
+        {
+            this._targetVelocity.Y = 1.0f;
+        }
     }
 }

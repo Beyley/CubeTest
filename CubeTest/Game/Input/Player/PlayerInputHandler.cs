@@ -25,6 +25,9 @@ public class PlayerInputHandler : InputHandler<FlyInputs>
             inputs.Move.X -= 1.0f;
         if (kb.IsKeyPressed(Key.D))
             inputs.Move.X += 1.0f;
+
+        if (kb.IsKeyPressed(Key.Space))
+            inputs.UpDown = 1.0f;
     }
 
     protected override void HandleGamepadInputs(IGamepad gamepad, ref FlyInputs inputs)
