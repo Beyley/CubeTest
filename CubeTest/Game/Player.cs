@@ -59,6 +59,11 @@ public class Player
     }
 
     private bool IsOnGround() => this.Position.Y < 0;
+
+    private void Jump()
+    {
+        if(this._onGround) this._velocity.Y += 0.05f;
+    }
     
     public void HandleInputs(float d, FlyInputs inputs)
     {
@@ -69,9 +74,6 @@ public class Player
         this._targetVelocity = Vector3.Normalize(Vector3.Cross(WorldGraphics.Camera.Front, WorldGraphics.Camera.Up)) * d * inputs.Move.X;
         this._targetVelocity += Vector3.Normalize(WorldGraphics.Camera.Front with { Y = 0 }) * d * inputs.Move.Y;
 
-        if (inputs.UpDown > 0.5f && this._onGround)
-        {
-            this._targetVelocity.Y = 1.0f;
-        }
+        if (inputs.UpDown > 0.5f) Jump();
     }
 }
