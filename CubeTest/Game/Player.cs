@@ -32,15 +32,15 @@ public class Player
 
         this._onGround = this.IsOnGround();
 
-        const float acceleration = 1.0f;
-        const float deceleration = 0.25f;
-        const float maxSpeed = 0.01f;
+        const float deceleration = 12f;
+        const float acceleration = deceleration + 4.0f;
+        const float maxSpeed = 0.02f;
 
         if (this._targetVelocity.X != 0) this._velocity.X += this._targetVelocity.X * acceleration * d;
-        else this._velocity.X -= this._velocity.X * deceleration;
+        this._velocity.X -= this._velocity.X * deceleration * d;
         
         if (this._targetVelocity.Z != 0) this._velocity.Z += this._targetVelocity.Z * acceleration * d;
-        else this._velocity.Z -= this._velocity.Z * deceleration;
+        this._velocity.Z -= this._velocity.Z * deceleration * d;
 
         if (this._onGround) this._velocity.Y -= 1 * d;
         else this._velocity.Y = 0;
