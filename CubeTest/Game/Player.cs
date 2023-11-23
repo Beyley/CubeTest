@@ -29,25 +29,30 @@ public class Player
     public void Update(float d)
     {
         this._inputHandler.Update(d);
-        if (!this._onGround) this._targetVelocity.Y -= 1.0f * d;
 
         this._onGround = this.IsOnGround();
 
-        if (this._onGround)
-        {
-            this._velocity.Y = 0;
-        }
+        const float acceleration = 1.0f;
+        const float deceleration = 0.25f;
+        const float maxSpeed = 0.01f;
 
-        if (this._targetVelocity.X != 0) this._velocity.X += Math.Sign(this._targetVelocity.X) * 0.25f * d;
-        else this._velocity.X -= this._velocity.X * 0.25f;
+        if (this._targetVelocity.X != 0) this._velocity.X += this._targetVelocity.X * acceleration * d;
+        else this._velocity.X -= this._velocity.X * deceleration;
         
-        if (this._targetVelocity.Z != 0) this._velocity.Z += Math.Sign(this._targetVelocity.Z) * 0.25f * d;
-        else this._velocity.Z -= this._velocity.Z * 0.25f;
+        if (this._targetVelocity.Z != 0) this._velocity.Z += this._targetVelocity.Z * acceleration * d;
+        else this._velocity.Z -= this._velocity.Z * deceleration;
+
+        if (this._onGround) this._velocity.Y -= 1 * d;
+        else this._velocity.Y = 0;
+
+        this._velocity = Vector3.Clamp(this._velocity, -Vector3.One * maxSpeed, Vector3.One * maxSpeed);
+        
+        Console.WriteLine(this._velocity);
             
         this.Position += _velocity;
     }
 
-    private bool IsOnGround() => this.Position.Y <= 0;
+    private bool IsOnGround() => this.Position.Y > 0;
     
     public void HandleInputs(float d, FlyInputs inputs)
     {
