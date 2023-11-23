@@ -155,7 +155,7 @@ public static unsafe class WorldGraphics {
 		};
 
 		//Create our projection matrix
-		Matrix4x4 projectionMatrix = Matrix4x4.CreatePerspectiveFieldOfView(70f * (MathF.PI / 180f), (float)Graphics.Window.Size.X / Graphics.Window.Size.Y, 0.1f, 100f);
+		Matrix4x4 projectionMatrix = Matrix4x4.CreatePerspectiveFieldOfView(90f * (MathF.PI / 180f), (float)Graphics.Window.Size.X / Graphics.Window.Size.Y, 0.01f, 100f);
 
 		//Write the projection matrix into the buffer
 		Graphics.WebGPU.QueueWriteBuffer(Graphics.Queue, _ProjectionMatrixBuffer, 0, &projectionMatrix, (nuint)sizeof(Matrix4x4));

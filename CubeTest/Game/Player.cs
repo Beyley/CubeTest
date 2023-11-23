@@ -62,7 +62,7 @@ public class Player
 
     private void Jump()
     {
-        if(this._onGround) this._velocity.Y += 0.05f;
+        if(this._onGround) this._velocity.Y += 1f;
     }
     
     public void HandleInputs(float d, FlyInputs inputs)
